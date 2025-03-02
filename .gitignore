@@ -1,3 +1,5 @@
 .venv
 /dataset/your_facebook_activity*
 .env
+.DS_Store
+data_annotation
