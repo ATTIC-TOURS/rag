@@ -44,7 +44,7 @@ Excludes documents based on rigid criteria
 
 # Thesis Paper
 
-To generate the formatted thesis document, run the following command from the root of the project:
+To generate the formatted thesis document, run the following command from the location below:
 
 📁 **Location:** `docs/thesis_paper/`
 
