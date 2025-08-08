@@ -2,12 +2,13 @@ import pymupdf
 import os
 import json
 from vector_db.chunking_strategy import section_based_chunking
-from vector_db import MyWeaviateDB
-from sentence_transformers import SentenceTransformer
-from colorama import Fore, Style, init
+from vector_db.vector_db import MyWeaviateDB
+from colorama import Fore, init
+
 init(autoreset=True)
 
 import warnings
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", message="Protobuf gencode version.*")
 
@@ -17,11 +18,9 @@ pdf_dir = os.path.join(BASE_DIR, "data/raw_pdfs")
 output_file = os.path.join(BASE_DIR, "data/processed_pdfs/pdf_chunks.json")
 
 
-def store_vectors():
-    embeddings = SentenceTransformer("intfloat/multilingual-e5-base")
-    myDB = MyWeaviateDB(embeddings=embeddings)
-    myDB.setup_collection()
-    
+def store_pdf_vectors(db: MyWeaviateDB) -> None:
+    db.setup_collection()
+
     data = []
     for pdf_file in os.listdir(pdf_dir):
         if pdf_file.endswith(".pdf"):
@@ -50,7 +49,7 @@ def store_vectors():
                             "content": chunk,
                         }
                     )
-                    myDB.store(
+                    db.store(
                         {
                             "file_name": pdf_file,
                             "title": title.strip(),
@@ -64,11 +63,3 @@ def store_vectors():
         json.dump(data, f, indent=2, ensure_ascii=False)
 
     print(f"✅ Created {len(data)} section-based chunks → saved to {output_file}")
-
-
-def main():
-    store_vectors()
-
-
-if __name__ == "__main__":
-    main()

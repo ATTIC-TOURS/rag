@@ -1,7 +1,7 @@
 import weaviate
 import weaviate.classes.config as wc
 from sentence_transformers import SentenceTransformer
-from colorama import Fore, Style, init
+from colorama import Fore, init
 
 init(autoreset=True)
 
@@ -12,11 +12,11 @@ class MyWeaviateDB:
 
     def __init__(
         self,
-        embeddings,
-        collection_name="Requirements",
-        ef_construction=300,
-        bm25_b=0.7,
-        bm25_k1=1.25,
+        embeddings: SentenceTransformer,
+        collection_name: str = "Requirements",
+        ef_construction: int = 300,
+        bm25_b: float = 0.7,
+        bm25_k1: float = 1.25,
     ):
         self.embeddings = embeddings
         self.collection_name = collection_name
@@ -31,54 +31,52 @@ class MyWeaviateDB:
             client.collections.delete_all()
             print(Fore.RED + "All collections has been removed!")
 
-            if not client.collections.exists(self.collection_name):
-                client.collections.create(
-                    # NAME
-                    name=self.collection_name,
-                    # PROPERTIES
-                    properties=[
-                        wc.Property(
-                            name="file_name",
-                            data_type=wc.DataType.TEXT,
-                            index_searchable=True,
-                        ),
-                        wc.Property(
-                            name="title",
-                            data_type=wc.DataType.TEXT,
-                            index_searchable=True,
-                        ),  # used for filtering
-                        wc.Property(
-                            name="content",
-                            data_type=wc.DataType.TEXT,
-                            index_searchable=True,
-                        ),  # stored readable text
-                        wc.Property(
-                            name="chunk_id",
-                            data_type=wc.DataType.TEXT,
-                            index_searchable=True,
-                        ),
-                    ],
-                    # CONFIGURATION
-                    vector_config=[
-                        wc.Configure.Vectors.self_provided(
-                            name="custom_vector",
-                            vector_index_config=wc.Configure.VectorIndex.hnsw(
-                                ef_construction=self.ef_construction,
-                                distance_metric=wc.VectorDistances.COSINE,
-                            ),
-                        )
-                    ],
-                    inverted_index_config=wc.Configure.inverted_index(
-                        bm25_b=self.bm25_b,
-                        bm25_k1=self.bm25_k1,
-                        index_null_state=True,
-                        index_property_length=True,
-                        index_timestamps=True,
+            client.collections.create(
+                # NAME
+                name=self.collection_name,
+                # PROPERTIES
+                properties=[
+                    wc.Property(
+                        name="file_name",
+                        data_type=wc.DataType.TEXT,
+                        index_searchable=True,
                     ),
-                )
-                print(Fore.GREEN + "New Collection created!")
-            else:
-                print(f"Collection: '{self.collection_name}' already exists!")
+                    wc.Property(
+                        name="title",
+                        data_type=wc.DataType.TEXT,
+                        index_searchable=True,
+                    ),  # used for filtering
+                    wc.Property(
+                        name="content",
+                        data_type=wc.DataType.TEXT,
+                        index_searchable=True,
+                    ),  # stored readable text
+                    wc.Property(
+                        name="chunk_id",
+                        data_type=wc.DataType.TEXT,
+                        index_searchable=True,
+                    ),
+                ],
+                # CONFIGURATION
+                vector_config=[
+                    wc.Configure.Vectors.self_provided(
+                        name="custom_vector",
+                        vector_index_config=wc.Configure.VectorIndex.hnsw(
+                            ef_construction=self.ef_construction,
+                            distance_metric=wc.VectorDistances.COSINE,
+                        ),
+                    )
+                ],
+                inverted_index_config=wc.Configure.inverted_index(
+                    bm25_b=self.bm25_b,
+                    bm25_k1=self.bm25_k1,
+                    index_null_state=True,
+                    index_property_length=True,
+                    index_timestamps=True,
+                ),
+            )
+            print(Fore.GREEN + "New Collection created!")
+
         except Exception as e:
             print(Fore.RED + f"{e}")
 
@@ -86,18 +84,7 @@ class MyWeaviateDB:
             if client:
                 client.close()
 
-    def reset(self):
-        client = None
-        try:
-            client = weaviate.connect_to_local(**self.connection_config)
-
-        except Exception as e:
-            print(e)
-        finally:
-            if client:
-                client.close()
-
-    def store(self, chunk):
+    def store(self, chunk: dict[str, str]):
         """
         Insert one chunk into Weaviate collection with a self-provided vector.
 
@@ -119,7 +106,9 @@ class MyWeaviateDB:
             combined_text = f"passage: {properties['content']}"
 
             vector = self.embeddings.encode(combined_text)
-            collection.data.insert(properties=properties, vector={'custom_vector': vector})
+            collection.data.insert(
+                properties=properties, vector={"custom_vector": vector}
+            )
 
             print(
                 Fore.GREEN
@@ -135,12 +124,13 @@ class MyWeaviateDB:
                 except Exception:
                     pass
 
-    def search(self, query, alpha=1, k=5):
+    def search(self, query: str, alpha: int = 1, k: int = 5):
         """
         **Hybrid Search** = Keyword Search + Semantic Search
             - An alpha of 1 is a pure vector search.
             - An alpha of 0 is a pure keyword search.
         """
+        query = f"query: {query}"
         client = None
         try:
             client = weaviate.connect_to_local(**self.connection_config)
@@ -150,8 +140,8 @@ class MyWeaviateDB:
                 query=query,
                 alpha=alpha,
                 target_vector="custom_vector",
-                query_properties=["content"],
-                vector=self.embeddings.encode(f'query: {query}'),
+                query_properties=["title", "content"],
+                vector=self.embeddings.encode(query),
                 limit=k,
             )
             return response.objects
@@ -161,12 +151,3 @@ class MyWeaviateDB:
         finally:
             if client:
                 client.close()
-
-
-def main():
-    embeddings = SentenceTransformer("intfloat/multilingual-e5-base")
-    myDB = MyWeaviateDB(embeddings=embeddings)
-
-
-if __name__ == "__main__":
-    main()
