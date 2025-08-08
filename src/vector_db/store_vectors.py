@@ -1,7 +1,7 @@
 import pymupdf
 import os
 import json
-from chunking_strategy import section_based_chunking
+from vector_db.chunking_strategy import section_based_chunking
 from vector_db import MyWeaviateDB
 from sentence_transformers import SentenceTransformer
 from colorama import Fore, Style, init
