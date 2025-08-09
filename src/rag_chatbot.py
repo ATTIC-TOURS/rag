@@ -1,6 +1,4 @@
-from vector_db.vector_db import MyWeaviateDB
-from vector_db.store_vectors import store_pdf_vectors
-from sentence_transformers import SentenceTransformer
+from retriever import Retriever
 from colorama import Fore, init
 
 init(autoreset=True)
@@ -9,18 +7,15 @@ init(autoreset=True)
 class RAG_Chatbot:
 
     def __init__(self):
-        embeddings: SentenceTransformer = SentenceTransformer(
-            "intfloat/multilingual-e5-base"
-        )
-        self.db: MyWeaviateDB = MyWeaviateDB(embeddings=embeddings)
-
-    def setup(self):
-        store_pdf_vectors(self.db)
+        self.retriever = Retriever()
+        
+    def store_docs(self):
+        self.retriever.pre_compute_docs()
 
     def test_retriever(self, alpha: int = 1, k: int = 3):
         while True:
             query = input("\nquery: ")
-            docs = self.db.search(query, alpha=alpha, k=k)
+            docs = self.retriever.retrieve_relevant_docs(query=query, alpha=alpha, k=k)
 
             for idx, relevant_doc in enumerate(docs):
                 print(Fore.GREEN + f'{idx + 1}. {relevant_doc.properties["content"]}')
@@ -28,7 +23,7 @@ class RAG_Chatbot:
 
 def main():
     chatbot = RAG_Chatbot()
-    chatbot.setup()
+    chatbot.store_docs()
     chatbot.test_retriever()
 
 

@@ -19,8 +19,6 @@ output_file = os.path.join(BASE_DIR, "data/processed_pdfs/pdf_chunks.json")
 
 
 def store_pdf_vectors(db: MyWeaviateDB) -> None:
-    db.setup_collection()
-
     data = []
     for pdf_file in os.listdir(pdf_dir):
         if pdf_file.endswith(".pdf"):

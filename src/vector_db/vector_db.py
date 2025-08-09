@@ -13,10 +13,10 @@ class MyWeaviateDB:
     def __init__(
         self,
         embeddings: SentenceTransformer,
+        ef_construction: int,
+        bm25_b: float,
+        bm25_k1: float,
         collection_name: str = "Requirements",
-        ef_construction: int = 300,
-        bm25_b: float = 0.7,
-        bm25_k1: float = 1.25,
     ):
         self.embeddings = embeddings
         self.collection_name = collection_name
