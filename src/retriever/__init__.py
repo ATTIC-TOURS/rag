@@ -27,14 +27,3 @@ class Retriever:
 
     def retrieve_relevant_docs(self, query: str, alpha: int = 1, k: int = 3):
         return self.db.search(query=query, alpha=alpha, k=k)
-
-
-def main():
-    embeddings: SentenceTransformer = SentenceTransformer(
-        "intfloat/multilingual-e5-base"
-    )
-    retriever = Retriever(embeddings=embeddings)
-
-
-if __name__ == "__main__":
-    main()

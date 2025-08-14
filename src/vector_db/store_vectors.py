@@ -25,6 +25,11 @@ def store_pdf_vectors(db: MyWeaviateDB) -> None:
             pdf_path = os.path.join(pdf_dir, pdf_file)
             print(Fore.CYAN + f"📄 Processing: {pdf_file}")
 
+            '''
+            It opens a PDF → gets the title from metadata if available 
+            → otherwise extracts all text 
+            → and if the title is missing, it uses the first line of the document as the title.
+            '''
             with pymupdf.open(pdf_path) as doc:
                 title = doc.metadata.get("title", "")
 

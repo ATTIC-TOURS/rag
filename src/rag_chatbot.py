@@ -13,18 +13,27 @@ class RAG_Chatbot:
         self.retriever.pre_compute_docs()
 
     def test_retriever(self, alpha: int = 1, k: int = 3):
+        color: dict[int, str] = {
+            0: Fore.BLUE,
+            1: Fore.GREEN,
+            2: Fore.YELLOW,
+            3: Fore.CYAN
+        }
         while True:
             query = input("\nquery: ")
+            
+            if query.lower() == 'q': break
+            
             docs = self.retriever.retrieve_relevant_docs(query=query, alpha=alpha, k=k)
 
             for idx, relevant_doc in enumerate(docs):
-                print(Fore.GREEN + f'{idx + 1}. {relevant_doc.properties["content"]}')
+                print(color[idx % len(color.values())] + f'{idx + 1}. {relevant_doc.properties["content"]}')
 
 
 def main():
     chatbot = RAG_Chatbot()
-    chatbot.store_docs()
-    chatbot.test_retriever()
+    # chatbot.store_docs()
+    chatbot.test_retriever(k=10)
 
 
 if __name__ == "__main__":
