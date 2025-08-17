@@ -18,7 +18,7 @@ pdf_dir = os.path.join(BASE_DIR, "data/raw_pdfs")
 output_file = os.path.join(BASE_DIR, "data/processed_pdfs/pdf_chunks.json")
 
 
-def store_pdf_vectors(db: MyWeaviateDB) -> None:
+def store_pdf_vectors(db: MyWeaviateDB, chunk: type[section_based_chunking]) -> None:
     data = []
     for pdf_file in os.listdir(pdf_dir):
         if pdf_file.endswith(".pdf"):
@@ -41,15 +41,15 @@ def store_pdf_vectors(db: MyWeaviateDB) -> None:
                     title = text.split("\n")[0]
 
                 # Chunk with wider grouping
-                chunks = section_based_chunking(text, max_items=10)
+                chunks = chunk(text, max_items=10)
 
-                for idx, chunk in enumerate(chunks):
+                for idx, chunk_data in enumerate(chunks):
                     data.append(
                         {
                             "file_name": pdf_file,
                             "title": title.strip(),
                             "chunk_id": f"{pdf_file}_chunk_{idx}",
-                            "content": chunk,
+                            "content": chunk_data,
                         }
                     )
                     db.store(
@@ -57,7 +57,7 @@ def store_pdf_vectors(db: MyWeaviateDB) -> None:
                             "file_name": pdf_file,
                             "title": title.strip(),
                             "chunk_id": f"{pdf_file}_chunk_{idx}",
-                            "content": chunk,
+                            "content": chunk_data,
                         }
                     )
 
