@@ -42,7 +42,7 @@ class RAG_Chatbot:
 
 def main():
     chatbot = RAG_Chatbot()
-    # chatbot.store_docs()
+    chatbot.store_docs()
     chatbot.test_retriever(k=10)
 
 

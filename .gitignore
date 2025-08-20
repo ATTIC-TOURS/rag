@@ -5,3 +5,5 @@
 data_annotation
 *.pkl
 __pycache__
+certificate.pem
+annotations

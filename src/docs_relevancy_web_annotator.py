@@ -193,11 +193,11 @@ def annotate(df: pd.DataFrame, metadata: dict) -> None:
     """
         doc_text = f"""
 #### Is the Document relevant to the Query??
-<b style="color:blue;">Query {row.query_id}:</b> {row.query}  
+<b>Query {row.query_id}:</b> {row.query}  
 <br>
 📑 Document
 <br>
-<b style="color:darkred;">File Name:</b> {row.file_name}  
+<b>File Name:</b> {row.file_name}  
 <div style="border:1px solid #555; padding:10px; max-height:250px; overflow-y:auto;">
 {row.content}
 </div>
@@ -336,8 +336,8 @@ def main():
     queries = load_queries()
 
     metadata = {
-        "embeddings": SentenceTransformer("intfloat/multilingual-e5-base"),
-        "chunking strategy": section_based_chunking,
+        "embeddings": "intfloat/multilingual-e5-base",
+        "chunking_strategy": "section_based_chunking",
         "ef_construction": 300,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
@@ -346,13 +346,13 @@ def main():
     }
 
     retriever = Retriever(
-        embeddings=metadata["embeddings"],
+        embeddings=SentenceTransformer("intfloat/multilingual-e5-base"),
         ef_construction=metadata["ef_construction"],
         bm25_b=metadata["bm25_b"],
         bm25_k1=metadata["bm25_k1"],
     )
 
-    retriever.pre_compute_docs(metadata["chunking strategy"])
+    retriever.pre_compute_docs(section_based_chunking)
 
     annotation_pools = generate_annotation_pools(
         queries, retriever, alpha=metadata["alpha"], k=metadata["k"]
