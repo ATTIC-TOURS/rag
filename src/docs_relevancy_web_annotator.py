@@ -16,21 +16,8 @@ def extract_queries() -> pd.DataFrame:
     return queries
 
 
-def remove_null_entries(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    return df[df["intent"].notna()]
-
-
-def get_only_target_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    target_columns = ["query_id", "query"]
-    return df[target_columns]
-
-
 def transform_queries(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df = remove_null_entries(df)
-    df = get_only_target_columns(df)
     return df
 
 
@@ -40,84 +27,14 @@ def load_queries() -> pd.DataFrame:
     return df
 
 
-def get_precision_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
-    df = df.copy()
-
-    str_query_id = "query_id"
-    str_relevant = "relevant"
-    str_precision_at_k = f"Precision@{k}"
-
-    df_topk = df[df["rank"] <= k]
-
-    precision_per_query_at_k = (
-        df_topk.groupby(str_query_id)
-        .apply(lambda g: g[str_relevant].sum() / k)
-        .reset_index(name=str_precision_at_k)
-    )
-    return precision_per_query_at_k
-
-
-def get_recall_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
-    df = df.copy()
-
-    str_query_id = "query_id"
-    str_rank = "rank"
-    str_relevant = "relevant"
-    str_recall_at_k = f"Recall@{k}"
-    str_retrieved_relevant = "retrieved_relevant"
-    str_total_relevant = "total_relevant"
-
-    total_relevant = (
-        df.groupby(str_query_id)[str_relevant]
-        .sum()
-        .reset_index(name=str_total_relevant)
-    )
-
-    df_topk = df[df[str_rank] <= k]
-
-    recall_per_query_at_k = (
-        df_topk.groupby(str_query_id)
-        .apply(lambda g: (g[str_relevant].sum()))
-        .reset_index(name=str_retrieved_relevant)
-        .merge(total_relevant, on=str_query_id)
-    )
-
-    recall_per_query_at_k[str_recall_at_k] = (
-        recall_per_query_at_k[str_retrieved_relevant]
-        / recall_per_query_at_k[str_total_relevant]
-    )
-
-    return recall_per_query_at_k
-
-
-def get_f1_per_query_at_k(df: pd.DataFrame, k: int) -> pd.Series:
-    df = df.copy()
-
-    str_precision_at_k = f"Precision@{k}"
-    str_recall_at_k = f"Recall@{k}"
-
-    precision_per_query_at_k = get_precision_per_query_at_k(df, k)
-    recall_per_query_at_k = get_recall_per_query_at_k(df, k)
-
-    f1_per_query_at_k = (
-        2
-        * precision_per_query_at_k[str_precision_at_k]
-        * recall_per_query_at_k[str_recall_at_k]
-    ) / (
-        precision_per_query_at_k[str_precision_at_k]
-        + recall_per_query_at_k[str_recall_at_k]
-    )
-
-    return f1_per_query_at_k
-
 
 def generate_annotation_pools(
-    queries: pd.DataFrame, retriever: Retriever, alpha: int, k: int
+    queries: pd.DataFrame, retriever: Retriever, alpha: int, top_k: int
 ) -> pd.DataFrame:
     annotation_pools_data = {"query_id": [], "query": [], "rank": []}
     for query_id, query in queries.to_numpy():
 
-        retrieved_docs = retriever.retrieve_relevant_docs(query=query, alpha=alpha, k=k)
+        retrieved_docs = retriever.retrieve_relevant_docs(query=query, alpha=alpha, k=top_k)
 
         for rank, doc in enumerate(retrieved_docs):
             # dynamically set the column name
@@ -337,12 +254,15 @@ def main():
 
     metadata = {
         "embeddings": "intfloat/multilingual-e5-base",
+        "no_of_questions": len(queries),
+        "query_cleaning_strategy": None,
+        "reranker": None,
         "chunking_strategy": "section_based_chunking",
         "ef_construction": 300,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
-        "alpha": 1,
-        "k": 10,
+        "alpha": 0.0,
+        "top_k": 10,
     }
 
     retriever = Retriever(
@@ -355,10 +275,10 @@ def main():
     retriever.pre_compute_docs(section_based_chunking)
 
     annotation_pools = generate_annotation_pools(
-        queries, retriever, alpha=metadata["alpha"], k=metadata["k"]
+        queries, retriever, alpha=metadata["alpha"], top_k=metadata["top_k"]
     )
     annotate(
-        annotation_pools[:10],
+        annotation_pools,
         metadata=metadata,
     )
 

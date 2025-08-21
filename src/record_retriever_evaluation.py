@@ -117,7 +117,7 @@ def get_metadata(path: str) -> dict[str, str]:
 def record_retriever_evaluation() -> None:
     BASE_PATH = "src/annotations"
     if len(os.listdir(BASE_PATH)) == 0:
-        print("No Record")
+        print("No Annotations Record")
         return
     for path in os.listdir(BASE_PATH):
         df = pd.read_csv(f'{BASE_PATH}/{path}', comment="#")
@@ -126,12 +126,16 @@ def record_retriever_evaluation() -> None:
         new_retriever_evalution = retriever_evaluation | metadata
         for key, value in new_retriever_evalution.items():
             new_retriever_evalution[key] = [value]
-        old_record = pd.read_csv("src/evaluations/retriever_evaluation.csv")
+        try:
+            old_record = None
+            old_record = pd.read_csv("src/evaluations/retriever_evaluation.csv")
+        except:
+            pass
         new_record = pd.DataFrame(new_retriever_evalution)
         pd.concat([old_record, new_record]).to_csv("src/evaluations/retriever_evaluation.csv", index=False)
         os.remove(f'{BASE_PATH}/{path}')
     
-    print("Recorded")
+    print("New Evaluation Recorded!")
 
 def main():
     record_retriever_evaluation()
