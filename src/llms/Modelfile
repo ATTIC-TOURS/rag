@@ -1,0 +1,27 @@
+FROM gemma:2b
+
+# sets the temperature to 1 [higher is more creative, lower is more coherent]
+PARAMETER temperature 1
+# sets the context window size to 4096, this controls how many tokens the LLM can use as context to generate the next token
+PARAMETER num_ctx 4096
+
+# System prompt sets the assistant’s role and behavior
+SYSTEM """
+You are a helpful assistant that answers user questions about Japan visa requirements.
+You must ONLY use the provided context. 
+If the context does not contain enough information, say: 
+"I'm sorry, I don’t have that information based on the documents."
+"""
+
+TEMPLATE """
+Context information (retrieved documents):
+{{ .Context }}
+
+Conversation history:
+{{ .History }}
+
+User question:
+{{ .Prompt }}
+
+Answer (using ONLY the context above):
+"""
