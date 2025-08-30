@@ -16,11 +16,11 @@ class RAG_Chatbot:
         )
         self.retriever = Retriever(collection_name="Requirements", embeddings=embeddings)
 
-    def prepare_relevant_docs(self) -> None:
-        self.retriever.pre_compute_docs(section_based_chunking)
+    def prepare_docs(self) -> None:
+        self.retriever.prepare_docs(section_based_chunking)
 
-    def answer(self, query: str) -> str:
-        relevant_docs = self.retriever.search(query, alpha=0.8, top_k=3)
+    def answer(self, query: str, alpha: int = 0.8, top_k: int = 3) -> str:
+        relevant_docs = self.retriever.search(query, alpha=alpha, top_k=top_k)
         context = ""
         for relevant_doc in relevant_docs:
             context += relevant_doc.properties["content"]
@@ -40,7 +40,7 @@ def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
         clear = gr.ClearButton([msg, chatbot])
 
         def respond(message, chat_history):
-            bot_message = rag_chatbot.answer(message)
+            bot_message = rag_chatbot.answer(query=message)
             chat_history.append({"role": "user", "content": message})
             chat_history.append({"role": "assistant", "content": bot_message})
             return "", chat_history
@@ -50,7 +50,7 @@ def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
     
 def main():
     chatbot = RAG_Chatbot()
-    chatbot.prepare_relevant_docs()
+    chatbot.prepare_docs()
     run_prototype(chatbot)
 
 

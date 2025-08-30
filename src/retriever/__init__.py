@@ -15,16 +15,16 @@ class Retriever:
         bm25_k1: float = 1.25
     ):
         self.db: MyWeaviateDB = MyWeaviateDB(
-            embeddings=embeddings,
             ef_construction=ef_construction,
             bm25_b=bm25_b,
             bm25_k1=bm25_k1,
             collection_name=collection_name
         )
+        self.embeddings = embeddings
 
-    def pre_compute_docs(self, chunk: type[section_based_chunking]):
+    def prepare_docs(self, chunk: type[section_based_chunking]):
         self.db.setup_collection()
-        store_pdf_vectors(self.db, chunk)
+        store_pdf_vectors(db=self.db, embeddings=self.embeddings, chunk=chunk)
 
     def search(self, query: str, alpha: int = 1, top_k: int = 3):
-        return self.db.search(query=query, alpha=alpha, k=top_k)
+        return self.db.search(query=query, embeddings=self.embeddings, alpha=alpha, k=top_k)

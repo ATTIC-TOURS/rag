@@ -273,7 +273,7 @@ def main():
         bm25_k1=metadata["bm25_k1"],
     )
 
-    retriever.pre_compute_docs(section_based_chunking)
+    retriever.prepare_docs(section_based_chunking)
 
     annotation_pools = generate_annotation_pools(
         queries, retriever, alpha=metadata["alpha"], top_k=metadata["top_k"]

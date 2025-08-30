@@ -12,13 +12,11 @@ class MyWeaviateDB:
 
     def __init__(
         self,
-        embeddings: SentenceTransformer,
         ef_construction: int,
         bm25_b: float,
         bm25_k1: float,
         collection_name: str = "Requirements",
     ):
-        self.embeddings = embeddings
         self.collection_name = collection_name
         self.ef_construction = ef_construction
         self.bm25_b = bm25_b
@@ -85,7 +83,7 @@ class MyWeaviateDB:
             if client:
                 client.close()
 
-    def store(self, chunk: dict[str, str]):
+    def store(self, chunk: dict[str, str], embeddings: SentenceTransformer):
         """
         Insert one chunk into Weaviate collection with a self-provided vector.
 
@@ -106,7 +104,7 @@ class MyWeaviateDB:
             # combine title + content for embedding (so vector represents both fields)
             combined_text = f"passage: {properties['content']}"
 
-            vector = self.embeddings.encode(combined_text)
+            vector = embeddings.encode(combined_text)
             collection.data.insert(
                 properties=properties, vector={"custom_vector": vector}
             )
@@ -125,7 +123,7 @@ class MyWeaviateDB:
                 except Exception:
                     pass
 
-    def search(self, query: str, alpha: int = 1, k: int = 5):
+    def search(self, query: str, embeddings: SentenceTransformer, alpha: int = 1, k: int = 5):
         """
         **Hybrid Search** = Keyword Search + Semantic Search
             - An alpha of 1 is a pure vector search.
@@ -142,7 +140,7 @@ class MyWeaviateDB:
                 alpha=alpha,
                 target_vector="custom_vector",
                 query_properties=["title", "content"],
-                vector=self.embeddings.encode(query),
+                vector=embeddings.encode(query),
                 limit=k,
             )
             return response.objects
