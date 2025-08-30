@@ -20,7 +20,7 @@ class RAG_Chatbot:
         self.retriever.pre_compute_docs(section_based_chunking)
 
     def answer(self, query: str) -> str:
-        relevant_docs = self.retriever.retrieve_relevant_docs(query, alpha=0.8, k=3)
+        relevant_docs = self.retriever.search(query, alpha=0.8, top_k=3)
         context = ""
         for relevant_doc in relevant_docs:
             context += relevant_doc.properties["content"]
@@ -32,27 +32,6 @@ class RAG_Chatbot:
             ],
         )
         return response["message"]["content"]
-
-    def test_retriever(self, alpha: int = 1, k: int = 3):
-        color: dict[int, str] = {
-            0: Fore.BLUE,
-            1: Fore.GREEN,
-            2: Fore.YELLOW,
-            3: Fore.CYAN,
-        }
-        while True:
-            query = input("\nquery: ")
-
-            if query.lower() == "q":
-                break
-
-            docs = self.retriever.retrieve_relevant_docs(query=query, alpha=alpha, k=k)
-
-            for idx, relevant_doc in enumerate(docs):
-                print(
-                    color[idx % len(color.values())]
-                    + f'{idx + 1}. {relevant_doc.properties["content"]}'
-                )
 
 def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
     with gr.Blocks() as demo:

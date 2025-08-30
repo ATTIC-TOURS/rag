@@ -34,7 +34,7 @@ def generate_annotation_pools(
     annotation_pools_data = {"query_id": [], "query": [], "rank": []}
     for query_id, query in queries.to_numpy():
 
-        retrieved_docs = retriever.retrieve_relevant_docs(query=query, alpha=alpha, k=top_k)
+        retrieved_docs = retriever.search(query=query, alpha=alpha, top_k=top_k)
 
         for rank, doc in enumerate(retrieved_docs):
             # dynamically set the column name

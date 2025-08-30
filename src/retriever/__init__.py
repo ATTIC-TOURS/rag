@@ -26,5 +26,5 @@ class Retriever:
         self.db.setup_collection()
         store_pdf_vectors(self.db, chunk)
 
-    def retrieve_relevant_docs(self, query: str, alpha: int = 1, k: int = 3):
-        return self.db.search(query=query, alpha=alpha, k=k)
+    def search(self, query: str, alpha: int = 1, top_k: int = 3):
+        return self.db.search(query=query, alpha=alpha, k=top_k)
