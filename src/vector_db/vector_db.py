@@ -28,8 +28,9 @@ class MyWeaviateDB:
         try:
             client = weaviate.connect_to_local(**self.connection_config)
 
-            client.collections.delete_all()
-            print(Fore.RED + "All collections has been removed!")
+            # client.collections.delete_all()
+            client.collections.delete(self.collection_name)
+            print(Fore.RED + f"{self.collection_name} has been removed!")
 
             client.collections.create(
                 # NAME
@@ -75,7 +76,7 @@ class MyWeaviateDB:
                     index_timestamps=True,
                 ),
             )
-            print(Fore.GREEN + "New Collection created!")
+            print(Fore.GREEN + f"New Collection {self.collection_name} created!")
 
         except Exception as e:
             print(Fore.RED + f"{e}")

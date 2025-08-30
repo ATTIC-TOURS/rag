@@ -266,6 +266,7 @@ def main():
     }
 
     retriever = Retriever(
+        collection_name="Test_requirements",
         embeddings=SentenceTransformer("intfloat/multilingual-e5-base"),
         ef_construction=metadata["ef_construction"],
         bm25_b=metadata["bm25_b"],

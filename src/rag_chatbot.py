@@ -14,7 +14,7 @@ class RAG_Chatbot:
         embeddings: SentenceTransformer = SentenceTransformer(
             "intfloat/multilingual-e5-base"
         )
-        self.retriever = Retriever(embeddings=embeddings)
+        self.retriever = Retriever(collection_name="Requirements", embeddings=embeddings)
 
     def prepare_relevant_docs(self) -> None:
         self.retriever.pre_compute_docs(section_based_chunking)

@@ -8,16 +8,18 @@ class Retriever:
 
     def __init__(
         self,
+        collection_name: str,
         embeddings: SentenceTransformer,
         ef_construction: int = 300,
         bm25_b: float = 0.7,
-        bm25_k1: float = 1.25,
+        bm25_k1: float = 1.25
     ):
         self.db: MyWeaviateDB = MyWeaviateDB(
             embeddings=embeddings,
             ef_construction=ef_construction,
             bm25_b=bm25_b,
             bm25_k1=bm25_k1,
+            collection_name=collection_name
         )
 
     def pre_compute_docs(self, chunk: type[section_based_chunking]):
