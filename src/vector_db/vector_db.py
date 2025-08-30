@@ -123,7 +123,7 @@ class MyWeaviateDB:
                 except Exception:
                     pass
 
-    def search(self, query: str, embeddings: SentenceTransformer, alpha: int = 1, k: int = 5):
+    def search(self, query: str, embeddings: SentenceTransformer, alpha: int = 1, top_k: int = 5):
         """
         **Hybrid Search** = Keyword Search + Semantic Search
             - An alpha of 1 is a pure vector search.
@@ -141,7 +141,7 @@ class MyWeaviateDB:
                 target_vector="custom_vector",
                 query_properties=["title", "content"],
                 vector=embeddings.encode(query),
-                limit=k,
+                limit=top_k,
             )
             return response.objects
 

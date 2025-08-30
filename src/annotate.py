@@ -5,7 +5,8 @@ from datetime import datetime
 import uuid
 import os
 from sentence_transformers import SentenceTransformer
-from vector_db.chunking_strategy import section_based_chunking
+from retriever.prepare_docs_strategy import SectionBasedChunkPreparation
+from vector_db.vector_db import MyWeaviateDB
 
 
 def extract_queries() -> pd.DataFrame:
@@ -25,7 +26,6 @@ def load_queries() -> pd.DataFrame:
     df = extract_queries()
     df = transform_queries(df)
     return df
-
 
 
 def generate_annotation_pools(
@@ -255,25 +255,33 @@ def main():
     metadata = {
         "embeddings": "intfloat/multilingual-e5-base",
         "no_of_questions": len(queries),
-        "query_cleaning_strategy": None,
         "reranker": None,
-        "chunking_strategy": "section_based_chunking",
         "ef_construction": 500,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
-        "alpha": 0.7,
+        "alpha": 0.7, #hybrid search
         "top_k": 10,
     }
 
-    retriever = Retriever(
+    db: MyWeaviateDB = MyWeaviateDB(
         collection_name="Test_requirements",
-        embeddings=SentenceTransformer("intfloat/multilingual-e5-base"),
         ef_construction=metadata["ef_construction"],
         bm25_b=metadata["bm25_b"],
         bm25_k1=metadata["bm25_k1"],
     )
+    embeddings: SentenceTransformer = SentenceTransformer(
+       metadata["embeddings"]
+    )
+    retriever = Retriever(db=db, embeddings=embeddings)
 
-    retriever.prepare_docs(section_based_chunking)
+    # clean|chunk|store
+    prepareDocsStrategy = SectionBasedChunkPreparation(db=db, embeddings=embeddings)
+    retriever.prepare_docs(prepareDocsStrategy)
+
+    metadata = metadata | {
+        "query_cleaning_strategy": prepareDocsStrategy.str_clean_strategy,
+        "chunking_strategy": prepareDocsStrategy.str_chunk_strategy,
+    }
 
     annotation_pools = generate_annotation_pools(
         queries, retriever, alpha=metadata["alpha"], top_k=metadata["top_k"]

@@ -2,7 +2,8 @@ from retriever import Retriever
 from colorama import Fore, init
 from sentence_transformers import SentenceTransformer
 import ollama
-from vector_db.chunking_strategy import section_based_chunking
+from retriever.prepare_docs_strategy import SectionBasedChunkPreparation
+from vector_db.vector_db import MyWeaviateDB
 import gradio as gr
 
 init(autoreset=True)
@@ -11,13 +12,19 @@ init(autoreset=True)
 class RAG_Chatbot:
 
     def __init__(self):
-        embeddings: SentenceTransformer = SentenceTransformer(
+        self.embeddings: SentenceTransformer = SentenceTransformer(
             "intfloat/multilingual-e5-base"
         )
-        self.retriever = Retriever(collection_name="Requirements", embeddings=embeddings)
+        self.db: MyWeaviateDB = MyWeaviateDB(
+            ef_construction=300,
+            bm25_b=0.7,
+            bm25_k1=1.25
+        )
+        self.retriever = Retriever(db=self.db, embeddings=self.embeddings)
 
     def prepare_docs(self) -> None:
-        self.retriever.prepare_docs(section_based_chunking)
+        prepareDocsStrategy = SectionBasedChunkPreparation(db=self.db, embeddings=self.embeddings)
+        self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy)
 
     def answer(self, query: str, alpha: int = 0.8, top_k: int = 3) -> str:
         relevant_docs = self.retriever.search(query, alpha=alpha, top_k=top_k)
