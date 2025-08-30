@@ -52,7 +52,7 @@ def generate_annotation_pools(
 
 
 def save_with_file_metadata(df: pd.DataFrame, metadata: dict, fname: str) -> None:
-    folder = "src/annotations"
+    folder = "annotations"
     os.makedirs(folder, exist_ok=True)
 
     path = os.path.join(folder, f"{fname}.csv")
@@ -258,10 +258,10 @@ def main():
         "query_cleaning_strategy": None,
         "reranker": None,
         "chunking_strategy": "section_based_chunking",
-        "ef_construction": 300,
+        "ef_construction": 500,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
-        "alpha": 0.0,
+        "alpha": 0.7,
         "top_k": 10,
     }
 
