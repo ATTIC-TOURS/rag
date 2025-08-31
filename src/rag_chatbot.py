@@ -49,7 +49,7 @@ class RAG_Chatbot:
                 yield content
 
     def answer(self, query: str) -> str:
-        context = self._retrieved_relevant_docs(query)  # retriever
+        context = self._retrieved_relevant_docs(query, top_k=1)  # retriever
         messages = self._get_messages(query, context)  # prompt
         return self._generate_response(messages)  # generation
 
