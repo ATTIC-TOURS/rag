@@ -1,9 +1,11 @@
 import pandas as pd
+import numpy as np
 import os
 import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", message="Protobuf gencode version.*")
+
 
 def get_precision_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
     df = df.copy()
@@ -20,6 +22,7 @@ def get_precision_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
         .reset_index(name=str_precision_at_k)
     )
     return precision_per_query_at_k
+
 
 def get_recall_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
     df = df.copy()
@@ -53,6 +56,7 @@ def get_recall_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
 
     return recall_per_query_at_k
 
+
 def get_f1_per_query_at_k(df: pd.DataFrame, k: int) -> pd.Series:
     df = df.copy()
 
@@ -73,6 +77,35 @@ def get_f1_per_query_at_k(df: pd.DataFrame, k: int) -> pd.Series:
 
     return f1_per_query_at_k
 
+
+def dcg_at_k(relevances, k):
+    relevances = np.asfarray(relevances)[:k]
+    if relevances.size:
+        return np.sum(relevances / np.log2(np.arange(2, relevances.size + 2)))
+    return 0.0
+
+
+def ndcg_at_k(relevances, k):
+    dcg_max = dcg_at_k(sorted(relevances, reverse=True), k)
+    if not dcg_max:
+        return 0.0
+    return dcg_at_k(relevances, k) / dcg_max
+
+
+def get_nDCG_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
+    str_query_id = "query_id"
+    str_relevant = "relevant"
+    str_rank = "rank"
+    str_ndcg_at_k = f"nDCG@{k}"
+
+    ndcg_scores = (
+        df.groupby(str_query_id)
+        .apply(lambda g: ndcg_at_k(g.sort_values(str_rank)[str_relevant].tolist(), k))
+        .reset_index(name=str_ndcg_at_k)
+    )
+    return ndcg_scores
+
+
 def evaluate_retriever_at_k(df: pd.DataFrame, k: int) -> dict[str, float]:
     df = df.copy()
 
@@ -81,14 +114,18 @@ def evaluate_retriever_at_k(df: pd.DataFrame, k: int) -> dict[str, float]:
 
     recall_per_query_at_k = get_recall_per_query_at_k(df, k)
     mean_recall_at_k = recall_per_query_at_k[f"Recall@{k}"].mean()
-    
+
     f1_per_query_at_k = get_f1_per_query_at_k(df, k)
     mean_f1_at_k = f1_per_query_at_k.mean()
+
+    ndcg_per_query_at_k = get_nDCG_per_query_at_k(df, k)
+    mean_ndcg_at_k = ndcg_per_query_at_k[f"nDCG@{k}"].mean()
 
     return {
         f"Mean Precision@{k}": mean_precision_at_k,
         f"Mean Recall@{k}": mean_recall_at_k,
-        f"Mean F1@{k}": mean_f1_at_k
+        f"Mean F1@{k}": mean_f1_at_k,
+        f"Mean nDCG@{k}": mean_ndcg_at_k,
     }
 
 
@@ -97,12 +134,12 @@ def evaluate_retriever(annotation_pools: pd.DataFrame, top_k: tuple[int]):
     for k in top_k:
         evaluation_at_k = evaluate_retriever_at_k(annotation_pools, k)
         evaluations_at_k.append(evaluation_at_k)
-    
+
     evaluation = {}
     for evaluation_at_k in evaluations_at_k:
         for key, value in evaluation_at_k.items():
             evaluation[key] = value
-    
+
     return evaluation
 
 
@@ -111,11 +148,13 @@ def get_metadata(path: str) -> dict[str, str]:
         metadata = {}
         while True:
             line = f.readline()
-            if line[0] != "#": break
+            if line[0] != "#":
+                break
             splitted_line = line.split()
             key, value = splitted_line[1:3]
             metadata[key[:-1]] = value
     return metadata
+
 
 def record_retriever_evaluation() -> None:
     BASE_PATH = "src/annotations"
@@ -123,9 +162,9 @@ def record_retriever_evaluation() -> None:
         print("No Annotations Record")
         return
     for path in os.listdir(BASE_PATH):
-        df = pd.read_csv(f'{BASE_PATH}/{path}', comment="#")
-        retriever_evaluation = evaluate_retriever(df, top_k = (3, 5, 10))
-        metadata = get_metadata(f'{BASE_PATH}/{path}')
+        df = pd.read_csv(f"{BASE_PATH}/{path}", comment="#")
+        retriever_evaluation = evaluate_retriever(df, top_k=(3, 5, 10))
+        metadata = get_metadata(f"{BASE_PATH}/{path}")
         new_retriever_evalution = retriever_evaluation | metadata
         for key, value in new_retriever_evalution.items():
             new_retriever_evalution[key] = [value]
@@ -135,13 +174,17 @@ def record_retriever_evaluation() -> None:
         except:
             pass
         new_record = pd.DataFrame(new_retriever_evalution)
-        pd.concat([old_record, new_record]).to_csv("src/evaluations/retriever_evaluation.csv", index=False)
-        os.remove(f'{BASE_PATH}/{path}')
-    
+        pd.concat([old_record, new_record]).to_csv(
+            "src/evaluations/retriever_evaluation.csv", index=False
+        )
+        os.remove(f"{BASE_PATH}/{path}")
+
     print("New Evaluation Recorded!")
+
 
 def main():
     record_retriever_evaluation()
+
 
 if __name__ == "__main__":
     main()
