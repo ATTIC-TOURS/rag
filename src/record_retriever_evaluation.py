@@ -1,6 +1,9 @@
 import pandas as pd
 import os
+import warnings
 
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message="Protobuf gencode version.*")
 
 def get_precision_per_query_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
     df = df.copy()
