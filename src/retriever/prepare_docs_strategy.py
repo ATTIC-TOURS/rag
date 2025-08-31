@@ -29,13 +29,13 @@ class PrepareDocsStrategy:
 
     def _clean(self, text: str) -> str:
         return text
-    
-    def _chunk(self):
-        pass
+
+    def _chunk(self) -> list[str]:
+        return []
 
     def prepare_docs(self):
         self.db.setup_collection()
-        
+
         data = []
         for pdf_file in os.listdir(pdf_dir):
             if pdf_file.endswith(".pdf"):
@@ -84,19 +84,30 @@ class SectionBasedChunkPreparation(PrepareDocsStrategy):
 
     def __init__(self, db: MyWeaviateDB, embeddings: SentenceTransformer):
         super().__init__(db, embeddings)
-    
+
     def _clean(self, text: str) -> str:
-        self.str_clean_strategy = ""
+        """
+        1. lower the letter
+        2. remove urls
+        3. remove unnecessary spacing
+        (brackets and numbering are kept for chunking)
+        """
+        self.str_clean_strategy = "cleaning_strategy_v2"
+
+        text = text.lower()
+        text = re.sub(r"(https?://\S+|www\.\S+)", "", text)  # remove URLs
+        text = re.sub(r"\s+", " ", text).strip()  # normalize spacing
         return text
+
 
     def _chunk(self, text: str) -> list[str]:
         self.str_chunk_strategy = "section_based_chunking"
         """
         Groups related lines into bigger chunks (max_items = how many requirement items to group).
         """
-        
+
         max_items = 10
-        
+
         text = text.replace("\r\n", "\n").replace("\r", "\n")  # normalize line breaks
         lines = [line.strip() for line in text.split("\n") if line.strip()]
 
@@ -106,14 +117,18 @@ class SectionBasedChunkPreparation(PrepareDocsStrategy):
 
         for line in lines:
             # Major heading (A. PURPOSE, B. REQUIREMENTS)
-            if re.match(r"^[A-Z]\.\s", line):
+            if re.match(r"^[a-zA-Z]\.\s", line):
                 if current_chunk:
                     chunks.append(current_chunk.strip())
                 current_chunk = line
                 item_count = 0
 
             # Numbered item (1), (2), (3)
-            elif re.match(r"^\(\d+\)", line) or re.match(r"^\d+\.", line) or re.match(r"^・", line):
+            elif (
+                re.match(r"^\(\d+\)", line)
+                or re.match(r"^\d+\.", line)
+                or re.match(r"^・", line)
+            ):
                 if item_count >= max_items:
                     chunks.append(current_chunk.strip())
                     current_chunk = ""
