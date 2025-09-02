@@ -30,14 +30,13 @@ class RAG_Chatbot:
 
     def _retrieved_relevant_docs(
         self, query: str, alpha: int = 0.8, top_k: int = 3
-    ) -> str:
-        relevant_docs = self.retriever.search(query, alpha=alpha, top_k=top_k)
-        context = ""
-        for relevant_doc in relevant_docs:
-            context += relevant_doc.properties["content"]
-        return context
+    ) -> list[str]:
+        relevant_docs = []
+        for relevant_doc in self.retriever.search(query, alpha=alpha, top_k=top_k):
+            relevant_docs.append(relevant_doc.properties["content"])
+        return relevant_docs
 
-    def _get_messages(self, query: str, context: str) -> list[dict[str, str]]:
+    def _get_messages(self, query: str, context: list[str]) -> list[dict[str, str]]:
         promptStrategy: PromptStrategy = PromptStrategyV1()
         return promptStrategy.get_messages(query, context)
 
@@ -49,8 +48,8 @@ class RAG_Chatbot:
                 yield content
 
     def answer(self, query: str) -> str:
-        context = self._retrieved_relevant_docs(query, top_k=1)  # retriever
-        messages = self._get_messages(query, context)  # prompt
+        relevant_docs = self._retrieved_relevant_docs(query, top_k=1)  # retriever
+        messages = self._get_messages(query=query, context=relevant_docs)  # prompt
         return self._generate_response(messages)  # generation
 
 

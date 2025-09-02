@@ -9,7 +9,7 @@ class PromptStrategyV1(PromptStrategy):
     def __str__(self):
         return "PromptStrategyV1"
 
-    def get_messages(self, query, context) -> list[dict[str, str]]:
+    def get_messages(self, query: str, context: list[str]) -> list[dict[str, str]]:
         system_content = f"""
                           You are assistant in Japan Visa related in Attic Tours Company.
                           The applicants are seeking for information about requirements.
@@ -24,7 +24,7 @@ class PromptStrategyV1(PromptStrategy):
 
         user_content = f"""
                         user query: {query}\n
-                        context: {context}\n
+                        context: {" ".join(context)}\n
                         """
         messages = [
             {
