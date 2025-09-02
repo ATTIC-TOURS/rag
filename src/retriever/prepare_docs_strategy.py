@@ -1,5 +1,7 @@
 from vector_db.vector_db import MyWeaviateDB
 from sentence_transformers import SentenceTransformer
+from data_cleaning_strategy.base import DataCleaningStrategy
+from chunking_strategy.base import ChunkingStrategy
 import re
 import pymupdf
 import os
@@ -20,18 +22,25 @@ output_file = os.path.join(BASE_DIR, "data/processed_pdfs/pdf_chunks.json")
 
 
 class PrepareDocsStrategy:
-    str_clean_strategy = ""
     str_chunk_strategy = ""
 
-    def __init__(self, db: MyWeaviateDB, embeddings: SentenceTransformer):
+    def __init__(
+        self,
+        db: MyWeaviateDB,
+        embeddings: SentenceTransformer,
+        data_cleaning_strategy: DataCleaningStrategy,
+        chunking_strategy: ChunkingStrategy
+    ):
         self.db = db
         self.embeddings = embeddings
+        self.data_cleaning_strategy = data_cleaning_strategy
+        self.chunking_strategy = chunking_strategy
 
-    def _clean(self, text: str) -> str:
-        return text
+    def get_data_cleaning_strategy_name(self) -> str:
+        return self.data_cleaning_strategy.strategy_name
 
-    def _chunk(self) -> list[str]:
-        return []
+    def get_chunking_strategy_name(self) -> str:
+        return self.chunking_strategy.strategy_name
 
     def prepare_docs(self):
         self.db.setup_collection()
@@ -58,7 +67,7 @@ class PrepareDocsStrategy:
                         title = text.split("\n")[0]
 
                     # Chunk with wider grouping
-                    chunks = self._chunk(self._clean(text))
+                    chunks = self.chunking_strategy.chunk(self.data_cleaning_strategy.clean_text(text))
 
                     for idx, chunk_data in enumerate(chunks):
                         temp_data = {
@@ -78,75 +87,3 @@ class PrepareDocsStrategy:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
         print(f"✅ Created {len(data)} section-based chunks → saved to {output_file}")
-
-
-class SectionBasedChunkPreparation(PrepareDocsStrategy):
-
-    def __init__(self, db: MyWeaviateDB, embeddings: SentenceTransformer):
-        super().__init__(db, embeddings)
-
-    def _clean(self, text: str) -> str:
-        """
-        1. lower the letter
-        2. remove urls
-        3. remove unnecessary spacing
-        (brackets and numbering are kept for chunking)
-        """
-        self.str_clean_strategy = "cleaning_strategy_v2"
-
-        text = text.lower()
-        text = re.sub(r"(https?://\S+|www\.\S+)", "", text)  # remove URLs
-        text = re.sub(r"\s+", " ", text).strip()  # normalize spacing
-        return text
-
-
-    def _chunk(self, text: str) -> list[str]:
-        self.str_chunk_strategy = "section_based_chunking"
-        """
-        Groups related lines into bigger chunks (max_items = how many requirement items to group).
-        """
-
-        max_items = 10
-
-        text = text.replace("\r\n", "\n").replace("\r", "\n")  # normalize line breaks
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
-
-        chunks: list[str] = []
-        current_chunk: str = ""
-        item_count: int = 0
-
-        for line in lines:
-            # Major heading (A. PURPOSE, B. REQUIREMENTS)
-            if re.match(r"^[a-zA-Z]\.\s", line):
-                if current_chunk:
-                    chunks.append(current_chunk.strip())
-                current_chunk = line
-                item_count = 0
-
-            # Numbered item (1), (2), (3)
-            elif (
-                re.match(r"^\(\d+\)", line)
-                or re.match(r"^\d+\.", line)
-                or re.match(r"^・", line)
-            ):
-                if item_count >= max_items:
-                    chunks.append(current_chunk.strip())
-                    current_chunk = ""
-                    item_count = 0
-                current_chunk += "\n" + line
-                item_count += 1
-
-            # Special headings 【ADDITIONAL REQUIREMENTS】
-            elif line.startswith("【") and line.endswith("】"):
-                if current_chunk:
-                    chunks.append(current_chunk.strip())
-                current_chunk = line
-                item_count = 0
-
-            else:
-                current_chunk += "\n" + line
-
-        if current_chunk:
-            chunks.append(current_chunk.strip())
-
-        return chunks

@@ -1,8 +1,12 @@
 from retriever import Retriever
-from colorama import Fore, init
+from colorama import init
 from sentence_transformers import SentenceTransformer
 import ollama
-from retriever.prepare_docs_strategy import SectionBasedChunkPreparation
+from retriever.prepare_docs_strategy import PrepareDocsStrategy
+from data_cleaning_strategy.base import DataCleaningStrategy
+from data_cleaning_strategy.v1 import DataCleaningStrategyV1
+from chunking_strategy.base import ChunkingStrategy
+from chunking_strategy.v1 import ChunkingStrategyV1
 from vector_db.vector_db import MyWeaviateDB
 from prompts.strategy_base import PromptStrategy
 from prompts.strategy_v1 import PromptStrategyV1
@@ -23,8 +27,12 @@ class RAG_Chatbot:
         self.retriever = Retriever(db=self.db, embeddings=self.embeddings)
 
     def prepare_docs(self) -> None:
-        prepareDocsStrategy = SectionBasedChunkPreparation(
-            db=self.db, embeddings=self.embeddings
+        
+        data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV1()
+        chunking_strategy: ChunkingStrategy = ChunkingStrategyV1()
+        
+        prepareDocsStrategy = PrepareDocsStrategy(
+            db=self.db, embeddings=self.embeddings, data_cleaning_strategy=data_cleaning_strategy, chunking_strategy=chunking_strategy
         )
         self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy)
 
@@ -53,48 +61,10 @@ class RAG_Chatbot:
         return self._generate_response(messages)  # generation
 
 
-def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
-    with gr.Blocks() as demo:
-        chatbot = gr.Chatbot(type="messages", label="Japan Visa Attic Tours Chatbot")
-        msg = gr.Textbox()
-        clear = gr.ClearButton([msg, chatbot])
-
-        def respond(message, chat_history):
-            # 1. Show user’s input immediately
-            chat_history.append(
-                {"role": "user", "content": message, "name": "You", "avatar": "👤"}
-            )
-            yield "", chat_history
-
-            # 2. Show placeholder while retrieving docs
-            chat_history.append(
-                {"role": "assistant", "content": "⏳ Retrieving relevant documents...","name": "Attic Bot",
-                "avatar": "🤖",}
-            )
-            yield "", chat_history
-
-            # 3. Now stream bot reply
-            bot_reply = ""
-            # replace placeholder with actual streaming response
-            chat_history[-1] = {
-                "role": "assistant",
-                "content": "",
-                "name": "Attic Bot",
-                "avatar": "🤖",
-            }
-            for token in rag_chatbot.answer(message):
-                bot_reply += token
-                chat_history[-1]["content"] = bot_reply
-                yield "", chat_history
-
-        msg.submit(respond, [msg, chatbot], [msg, chatbot], queue=True)
-    demo.launch(share=True)
-
 
 def main():
     chatbot = RAG_Chatbot()
     chatbot.prepare_docs()
-    run_prototype(chatbot)
 
 
 if __name__ == "__main__":

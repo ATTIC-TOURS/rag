@@ -5,7 +5,11 @@ from datetime import datetime
 import uuid
 import os
 from sentence_transformers import SentenceTransformer
-from retriever.prepare_docs_strategy import SectionBasedChunkPreparation
+from retriever.prepare_docs_strategy import PrepareDocsStrategy
+from data_cleaning_strategy.base import DataCleaningStrategy
+from data_cleaning_strategy.v1 import DataCleaningStrategyV1
+from chunking_strategy.base import ChunkingStrategy
+from chunking_strategy.v1 import ChunkingStrategyV1
 from vector_db.vector_db import MyWeaviateDB
 
 
@@ -19,7 +23,8 @@ def extract_queries() -> pd.DataFrame:
 
 def transform_queries(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    return df
+    target_columns = ["query_id", "query"]
+    return df[target_columns]
 
 
 def load_queries() -> pd.DataFrame:
@@ -256,10 +261,10 @@ def main():
         "embeddings": "intfloat/multilingual-e5-base",
         "no_of_questions": len(queries),
         "reranker": None,
-        "ef_construction": 500,
+        "ef_construction": 300,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
-        "alpha": 0.7, #hybrid search
+        "alpha": 0.7,
         "top_k": 10,
     }
 
@@ -275,12 +280,14 @@ def main():
     retriever = Retriever(db=db, embeddings=embeddings)
 
     # clean|chunk|store
-    prepareDocsStrategy = SectionBasedChunkPreparation(db=db, embeddings=embeddings)
+    data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV1()
+    chunking_strategy: ChunkingStrategy = ChunkingStrategyV1()
+    prepareDocsStrategy = PrepareDocsStrategy(db=db, embeddings=embeddings, data_cleaning_strategy=data_cleaning_strategy, chunking_strategy=chunking_strategy)
     retriever.prepare_docs(prepareDocsStrategy)
 
     metadata = metadata | {
-        "query_cleaning_strategy": prepareDocsStrategy.str_clean_strategy,
-        "chunking_strategy": prepareDocsStrategy.str_chunk_strategy,
+        "query_cleaning_strategy": prepareDocsStrategy.get_data_cleaning_strategy_name(),
+        "chunking_strategy": prepareDocsStrategy.get_chunking_strategy_name(),
     }
 
     annotation_pools = generate_annotation_pools(
