@@ -5,12 +5,13 @@ import ollama
 from retriever.prepare_docs_strategy import PrepareDocsStrategy
 from data_cleaning_strategy.base import DataCleaningStrategy
 from data_cleaning_strategy.v1 import DataCleaningStrategyV1
+from data_cleaning_strategy.v2 import DataCleaningStrategyV2
 from chunking_strategy.base import ChunkingStrategy
 from chunking_strategy.v1 import ChunkingStrategyV1
+from chunking_strategy.fixed_window_chunking import FixedWindowChunking
 from vector_db.vector_db import MyWeaviateDB
 from prompts.strategy_base import PromptStrategy
 from prompts.strategy_v1 import PromptStrategyV1
-import gradio as gr
 
 init(autoreset=True)
 
@@ -28,8 +29,8 @@ class RAG_Chatbot:
 
     def prepare_docs(self) -> None:
         
-        data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV1()
-        chunking_strategy: ChunkingStrategy = ChunkingStrategyV1()
+        data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV2()
+        chunking_strategy: ChunkingStrategy = FixedWindowChunking(window_size=100, overlap_size=50)
         
         prepareDocsStrategy = PrepareDocsStrategy(
             db=self.db, embeddings=self.embeddings, data_cleaning_strategy=data_cleaning_strategy, chunking_strategy=chunking_strategy
@@ -56,7 +57,7 @@ class RAG_Chatbot:
                 yield content
 
     def answer(self, query: str) -> str:
-        relevant_docs = self._retrieved_relevant_docs(query, top_k=1)  # retriever
+        relevant_docs = self._retrieved_relevant_docs(query, top_k=5)  # retriever
         messages = self._get_messages(query=query, context=relevant_docs)  # prompt
         return self._generate_response(messages)  # generation
 

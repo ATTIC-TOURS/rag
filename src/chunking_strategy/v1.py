@@ -5,7 +5,7 @@ import re
 class ChunkingStrategyV1(ChunkingStrategy):
     strategy_name = "section_based_chunking"
 
-    def chunk(self, text):
+    def chunk(self, text: str) -> list[str]:
         max_items = 10
 
         text = text.replace("\r\n", "\n").replace("\r", "\n")  # normalize line breaks
