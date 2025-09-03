@@ -83,7 +83,7 @@ class MyWeaviateDB:
             if client:
                 client.close()
 
-    def store(self, chunk: dict[str, str], embeddings: SentenceTransformer):
+    def store(self, chunk: dict[str, str], embeddings: SentenceTransformer, summary: str = None):
         """
         Insert one chunk into Weaviate collection with a self-provided vector.
 
@@ -101,9 +101,7 @@ class MyWeaviateDB:
                 "chunk_id": chunk.get("chunk_id"),
             }
 
-            # combine title + content for embedding (so vector represents both fields)
-            combined_text = f"passage: {properties['content']}"
-
+            combined_text = f"passage: {properties['content']} {summary}"
             vector = embeddings.encode(combined_text)
             collection.data.insert(
                 properties=properties, vector={"custom_vector": vector}
