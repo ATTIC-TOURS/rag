@@ -2,7 +2,7 @@ from vector_db.vector_db import MyWeaviateDB
 from sentence_transformers import SentenceTransformer
 from data_cleaning_strategy.base import DataCleaningStrategy
 from chunking_strategy.base import ChunkingStrategy
-import re
+from summarizer.summarizer import SummarizerLLM
 import pymupdf
 import os
 import json
@@ -29,12 +29,14 @@ class PrepareDocsStrategy:
         db: MyWeaviateDB,
         embeddings: SentenceTransformer,
         data_cleaning_strategy: DataCleaningStrategy,
-        chunking_strategy: ChunkingStrategy
+        chunking_strategy: ChunkingStrategy,
+        summarizer: SummarizerLLM = None
     ):
         self.db = db
         self.embeddings = embeddings
         self.data_cleaning_strategy = data_cleaning_strategy
         self.chunking_strategy = chunking_strategy
+        self.summarizer = summarizer
 
     def get_data_cleaning_strategy_name(self) -> str:
         return self.data_cleaning_strategy.strategy_name
@@ -51,22 +53,20 @@ class PrepareDocsStrategy:
                 pdf_path = os.path.join(pdf_dir, pdf_file)
                 print(Fore.CYAN + f"📄 Processing: {pdf_file}")
 
-                """
-                It opens a PDF → gets the title from metadata if available 
-                → otherwise extracts all text 
-                → and if the title is missing, it uses the first line of the document as the title.
-                """
                 with pymupdf.open(pdf_path) as doc:
                     title = doc.metadata.get("title", "")
 
                     text = ""
                     for page in doc:
                         text += page.get_text("text") + "\n"
-
+                    
+                    if self.summarizer:
+                        summary = self.summarizer.summarize(text)
+                        summary = self.data_cleaning_strategy.clean_text(summary)
+                    
                     if not title and text.strip():
                         title = text.split("\n")[0]
 
-                    # Chunk with wider grouping
                     chunks = self.chunking_strategy.chunk(self.data_cleaning_strategy.clean_text(text))
 
                     for idx, chunk_data in enumerate(chunks):
@@ -80,10 +80,11 @@ class PrepareDocsStrategy:
                         self.db.store(
                             chunk=temp_data,
                             embeddings=self.embeddings,
+                            summary=summary if self.summarizer else None
                         )
 
         # Save JSON
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-        print(f"✅ Created {len(data)} section-based chunks → saved to {output_file}")
+        print(f"✅ Created {len(data)} {self.get_chunking_strategy_name()} → saved to {output_file}")
