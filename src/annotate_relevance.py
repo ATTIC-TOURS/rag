@@ -8,9 +8,12 @@ from sentence_transformers import SentenceTransformer
 from retriever.prepare_docs_strategy import PrepareDocsStrategy
 from data_cleaning_strategy.base import DataCleaningStrategy
 from data_cleaning_strategy.v1 import DataCleaningStrategyV1
+from data_cleaning_strategy.v2 import DataCleaningStrategyV2
 from chunking_strategy.base import ChunkingStrategy
 from chunking_strategy.v1 import ChunkingStrategyV1
+from chunking_strategy.fixed_window_chunking import FixedWindowChunking
 from vector_db.vector_db import MyWeaviateDB
+from summarizer.summarizer import SummarizerLLM
 
 
 def extract_queries() -> pd.DataFrame:
@@ -274,20 +277,29 @@ def main():
         bm25_b=metadata["bm25_b"],
         bm25_k1=metadata["bm25_k1"],
     )
-    embeddings: SentenceTransformer = SentenceTransformer(
-       metadata["embeddings"]
-    )
+    embeddings: SentenceTransformer = SentenceTransformer(metadata["embeddings"])
     retriever = Retriever(db=db, embeddings=embeddings)
 
     # clean|chunk|store
-    data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV1()
-    chunking_strategy: ChunkingStrategy = ChunkingStrategyV1()
-    prepareDocsStrategy = PrepareDocsStrategy(db=db, embeddings=embeddings, data_cleaning_strategy=data_cleaning_strategy, chunking_strategy=chunking_strategy)
+    window_size = 100
+    overlap_size = 50
+    data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV2()
+    chunking_strategy: ChunkingStrategy = FixedWindowChunking(window_size=window_size, overlap_size=overlap_size)
+    summarizer = SummarizerLLM(model_name="gemma:2b")
+    prepareDocsStrategy = PrepareDocsStrategy(
+        db=db,
+        embeddings=embeddings,
+        data_cleaning_strategy=data_cleaning_strategy,
+        chunking_strategy=chunking_strategy,
+        summarizer=summarizer
+    )
     retriever.prepare_docs(prepareDocsStrategy)
 
     metadata = metadata | {
-        "query_cleaning_strategy": prepareDocsStrategy.get_data_cleaning_strategy_name(),
+        "docs_cleaning_strategy": prepareDocsStrategy.get_data_cleaning_strategy_name(),
         "chunking_strategy": prepareDocsStrategy.get_chunking_strategy_name(),
+        "window_size": window_size,
+        "overlap_size": overlap_size,
     }
 
     annotation_pools = generate_annotation_pools(
