@@ -3,9 +3,10 @@ from colorama import init
 from sentence_transformers import SentenceTransformer
 import ollama
 from retriever.prepare_docs_strategy import PrepareDocsStrategy
-from data_cleaning_strategy.base import DataCleaningStrategy
-from data_cleaning_strategy.v1 import DataCleaningStrategyV1
-from data_cleaning_strategy.v2 import DataCleaningStrategyV2
+from text_cleaning_strategy.base import TextCleaningStrategy
+from text_cleaning_strategy.docs.v1 import DocsCleaningStrategyV1
+from text_cleaning_strategy.docs.v2 import DocsCleaningStrategyV2
+from text_cleaning_strategy.query.v1 import QueryCleaningStrategyV1
 from chunking_strategy.base import ChunkingStrategy
 from chunking_strategy.v1 import ChunkingStrategyV1
 from chunking_strategy.fixed_window_chunking import FixedWindowChunking
@@ -25,15 +26,25 @@ class RAG_Chatbot:
         self.db: MyWeaviateDB = MyWeaviateDB(
             ef_construction=300, bm25_b=0.7, bm25_k1=1.25
         )
-        self.retriever = Retriever(db=self.db, embeddings=self.embeddings)
+        query_cleaning_strategy = QueryCleaningStrategyV1()
+        self.retriever = Retriever(
+            db=self.db,
+            embeddings=self.embeddings,
+            text_cleaning_strategy=query_cleaning_strategy,
+        )
 
     def prepare_docs(self) -> None:
-        
-        data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV2()
-        chunking_strategy: ChunkingStrategy = FixedWindowChunking(window_size=100, overlap_size=50)
-        
+
+        text_cleaning_strategy: TextCleaningStrategy = DocsCleaningStrategyV2()
+        chunking_strategy: ChunkingStrategy = FixedWindowChunking(
+            window_size=100, overlap_size=50
+        )
+
         prepareDocsStrategy = PrepareDocsStrategy(
-            db=self.db, embeddings=self.embeddings, data_cleaning_strategy=data_cleaning_strategy, chunking_strategy=chunking_strategy
+            db=self.db,
+            embeddings=self.embeddings,
+            text_cleaning_strategy=text_cleaning_strategy,
+            chunking_strategy=chunking_strategy,
         )
         self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy)
 
@@ -60,7 +71,6 @@ class RAG_Chatbot:
         relevant_docs = self._retrieved_relevant_docs(query, top_k=5)  # retriever
         messages = self._get_messages(query=query, context=relevant_docs)  # prompt
         return self._generate_response(messages)  # generation
-
 
 
 def main():

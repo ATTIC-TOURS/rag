@@ -1,10 +1,11 @@
-from data_cleaning_strategy.base import DataCleaningStrategy
+from text_cleaning_strategy.base import TextCleaningStrategy
 import re
 
 
-class DataCleaningStrategyV2(DataCleaningStrategy):
+class DocsCleaningStrategyV2(TextCleaningStrategy):
     
-    strategy_name = "cleaning_strategy_v2"
+    def get_strategy_name(self) -> str:
+        return "docs_cleaning_strategy_v2"
     
     def clean_text(self, text):
         """Strategy

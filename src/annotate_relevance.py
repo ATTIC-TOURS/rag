@@ -6,9 +6,10 @@ import uuid
 import os
 from sentence_transformers import SentenceTransformer
 from retriever.prepare_docs_strategy import PrepareDocsStrategy
-from data_cleaning_strategy.base import DataCleaningStrategy
-from data_cleaning_strategy.v1 import DataCleaningStrategyV1
-from data_cleaning_strategy.v2 import DataCleaningStrategyV2
+from text_cleaning_strategy.base import TextCleaningStrategy
+from text_cleaning_strategy.docs.v1 import DocsCleaningStrategyV1
+from text_cleaning_strategy.docs.v2 import DocsCleaningStrategyV2
+from text_cleaning_strategy.query.v1 import QueryCleaningStrategyV1
 from chunking_strategy.base import ChunkingStrategy
 from chunking_strategy.v1 import ChunkingStrategyV1
 from chunking_strategy.fixed_window_chunking import FixedWindowChunking
@@ -267,7 +268,7 @@ def main():
         "ef_construction": 300,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
-        "alpha": 0.7,
+        "alpha": 0.8,
         "top_k": 10,
     }
 
@@ -278,25 +279,31 @@ def main():
         bm25_k1=metadata["bm25_k1"],
     )
     embeddings: SentenceTransformer = SentenceTransformer(metadata["embeddings"])
-    retriever = Retriever(db=db, embeddings=embeddings)
+    query_cleaning_strategy = QueryCleaningStrategyV1()
+    retriever = Retriever(
+        db=db, embeddings=embeddings, text_cleaning_strategy=query_cleaning_strategy
+    )
 
     # clean|chunk|store
     window_size = 100
     overlap_size = 50
-    data_cleaning_strategy: DataCleaningStrategy = DataCleaningStrategyV2()
-    chunking_strategy: ChunkingStrategy = FixedWindowChunking(window_size=window_size, overlap_size=overlap_size)
-    summarizer = SummarizerLLM(model_name="gemma:2b")
+    docs_cleaning_strategy = DocsCleaningStrategyV2()
+    chunking_strategy: ChunkingStrategy = FixedWindowChunking(
+        window_size=window_size, overlap_size=overlap_size
+    )
+    summarizer = None  # SummarizerLLM(model_name="gemma:2b")
     prepareDocsStrategy = PrepareDocsStrategy(
         db=db,
         embeddings=embeddings,
-        data_cleaning_strategy=data_cleaning_strategy,
+        text_cleaning_strategy=docs_cleaning_strategy,
         chunking_strategy=chunking_strategy,
-        summarizer=summarizer
+        summarizer=summarizer,
     )
     retriever.prepare_docs(prepareDocsStrategy)
 
     metadata = metadata | {
-        "docs_cleaning_strategy": prepareDocsStrategy.get_data_cleaning_strategy_name(),
+        "docs_cleaning_strategy": prepareDocsStrategy.get_text_cleaning_strategy_name(),
+        "query_cleaning_strategy": retriever.get_text_cleaning_strategy_name(),
         "chunking_strategy": prepareDocsStrategy.get_chunking_strategy_name(),
         "window_size": window_size,
         "overlap_size": overlap_size,

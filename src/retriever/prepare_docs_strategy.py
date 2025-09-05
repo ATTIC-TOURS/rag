@@ -1,6 +1,6 @@
 from vector_db.vector_db import MyWeaviateDB
 from sentence_transformers import SentenceTransformer
-from data_cleaning_strategy.base import DataCleaningStrategy
+from text_cleaning_strategy.base import TextCleaningStrategy
 from chunking_strategy.base import ChunkingStrategy
 from summarizer.summarizer import SummarizerLLM
 import pymupdf
@@ -28,18 +28,18 @@ class PrepareDocsStrategy:
         self,
         db: MyWeaviateDB,
         embeddings: SentenceTransformer,
-        data_cleaning_strategy: DataCleaningStrategy,
+        text_cleaning_strategy: TextCleaningStrategy,
         chunking_strategy: ChunkingStrategy,
         summarizer: SummarizerLLM = None
     ):
         self.db = db
         self.embeddings = embeddings
-        self.data_cleaning_strategy = data_cleaning_strategy
+        self.text_cleaning_strategy = text_cleaning_strategy
         self.chunking_strategy = chunking_strategy
         self.summarizer = summarizer
 
-    def get_data_cleaning_strategy_name(self) -> str:
-        return self.data_cleaning_strategy.strategy_name
+    def get_text_cleaning_strategy_name(self) -> str:
+        return self.text_cleaning_strategy.get_strategy_name()
 
     def get_chunking_strategy_name(self) -> str:
         return self.chunking_strategy.strategy_name
@@ -62,12 +62,13 @@ class PrepareDocsStrategy:
                     
                     if self.summarizer:
                         summary = self.summarizer.summarize(text)
-                        summary = self.data_cleaning_strategy.clean_text(summary)
+                        summary = self.text_cleaning_strategy.clean_text(summary)
                     
                     if not title and text.strip():
                         title = text.split("\n")[0]
 
-                    chunks = self.chunking_strategy.chunk(self.data_cleaning_strategy.clean_text(text))
+                    text = self.text_cleaning_strategy.clean_text(text)
+                    chunks = self.chunking_strategy.chunk(text)
 
                     for idx, chunk_data in enumerate(chunks):
                         temp_data = {
