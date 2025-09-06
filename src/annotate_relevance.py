@@ -13,6 +13,7 @@ from text_cleaning_strategy.query.v1 import QueryCleaningStrategyV1
 from chunking_strategy.base import ChunkingStrategy
 from chunking_strategy.v1 import ChunkingStrategyV1
 from chunking_strategy.fixed_window_chunking import FixedWindowChunking
+from chunking_strategy.pdf_based_chunking import PdfBasedChunking
 from vector_db.vector_db import MyWeaviateDB
 from summarizer.summarizer import SummarizerLLM
 
@@ -285,12 +286,10 @@ def main():
     )
 
     # clean|chunk|store
-    window_size = 100
-    overlap_size = 50
+    window_size = None
+    overlap_size = None
     docs_cleaning_strategy = DocsCleaningStrategyV2()
-    chunking_strategy: ChunkingStrategy = FixedWindowChunking(
-        window_size=window_size, overlap_size=overlap_size
-    )
+    chunking_strategy = PdfBasedChunking()
     summarizer = None  # SummarizerLLM(model_name="gemma:2b")
     prepareDocsStrategy = PrepareDocsStrategy(
         db=db,
