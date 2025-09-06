@@ -138,7 +138,7 @@ class MyWeaviateDB:
                 alpha=alpha,
                 target_vector="custom_vector",
                 query_properties=["title", "content"],
-                vector=embeddings.encode(query),
+                vector=embeddings.encode(f'query: {query}'),
                 limit=top_k,
             )
             return response.objects
