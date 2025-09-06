@@ -3,6 +3,7 @@ from sentence_transformers import SentenceTransformer
 from text_cleaning_strategy.base import TextCleaningStrategy
 from chunking_strategy.base import ChunkingStrategy
 from summarizer.summarizer import SummarizerLLM
+from contextual_retrieval.context_embedder import ContextEmbedderLLM
 import pymupdf
 import os
 import json
@@ -30,13 +31,15 @@ class PrepareDocsStrategy:
         embeddings: SentenceTransformer,
         text_cleaning_strategy: TextCleaningStrategy,
         chunking_strategy: ChunkingStrategy,
-        summarizer: SummarizerLLM = None
+        summarizer: SummarizerLLM = None,
+        context_embedder: ContextEmbedderLLM = None
     ):
         self.db = db
         self.embeddings = embeddings
         self.text_cleaning_strategy = text_cleaning_strategy
         self.chunking_strategy = chunking_strategy
         self.summarizer = summarizer
+        self.context_embedder = context_embedder
 
     def get_text_cleaning_strategy_name(self) -> str:
         return self.text_cleaning_strategy.get_strategy_name()
@@ -56,30 +59,34 @@ class PrepareDocsStrategy:
                 with pymupdf.open(pdf_path) as doc:
                     title = doc.metadata.get("title", "")
 
-                    text = ""
+                    pdf_whole_text = ""
                     for page in doc:
-                        text += page.get_text("text") + "\n"
+                        pdf_whole_text += page.get_text("text") + "\n"
                     
                     if self.summarizer:
-                        summary = self.summarizer.summarize(text)
+                        summary = self.summarizer.summarize(pdf_whole_text)
                         summary = self.text_cleaning_strategy.clean_text(summary)
                     
-                    if not title and text.strip():
-                        title = text.split("\n")[0]
+                    if not title and pdf_whole_text.strip():
+                        title = pdf_whole_text.split("\n")[0]
 
-                    text = self.text_cleaning_strategy.clean_text(text)
-                    chunks = self.chunking_strategy.chunk(text)
+                    pdf_whole_text = self.text_cleaning_strategy.clean_text(pdf_whole_text)
+                    chunks = self.chunking_strategy.chunk(pdf_whole_text)
 
-                    for idx, chunk_data in enumerate(chunks):
-                        temp_data = {
+                    for idx, chunk_content in enumerate(chunks):
+                        contextual_content = None
+                        if self.context_embedder:
+                            contextual_content = self.context_embedder.embed_context(pdf_whole_text, chunk_content)
+                        chunk_data = {
                             "file_name": pdf_file,
                             "title": title.strip(),
                             "chunk_id": f"{pdf_file}_chunk_{idx}",
-                            "content": chunk_data,
+                            "content": chunk_content,
+                            "contextual_content": contextual_content
                         }
-                        data.append(temp_data)
+                        data.append(chunk_data)
                         self.db.store(
-                            chunk=temp_data,
+                            chunk=chunk_data,
                             embeddings=self.embeddings,
                             summary=summary if self.summarizer else None
                         )

@@ -100,9 +100,12 @@ class MyWeaviateDB:
                 "content": chunk.get("content"),
                 "chunk_id": chunk.get("chunk_id"),
             }
-
-            combined_text = f"passage: {properties['content']} {summary}"
-            vector = embeddings.encode(combined_text)
+            
+            if chunk.get("contextual_content"):
+                text_to_embed = f"passage: {chunk.get('contextual_content')} {summary}"
+            else:
+                text_to_embed = f"passage: {properties['content']} {summary}"
+            vector = embeddings.encode(text_to_embed)
             collection.data.insert(
                 properties=properties, vector={"custom_vector": vector}
             )
