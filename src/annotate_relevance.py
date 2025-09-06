@@ -14,8 +14,13 @@ from chunking_strategy.base import ChunkingStrategy
 from chunking_strategy.v1 import ChunkingStrategyV1
 from chunking_strategy.fixed_window_chunking import FixedWindowChunking
 from chunking_strategy.pdf_based_chunking import PdfBasedChunking
+from chunking_strategy.recursively_split_chunking import RecursivelySplitChunking
+from chunking_strategy.pdf_based_recursively_split_chunking import (
+    PdfBasedRecursivelySplitChunking,
+)
 from vector_db.vector_db import MyWeaviateDB
 from summarizer.summarizer import SummarizerLLM
+from contextual_retrieval.context_embedder import ContextEmbedderLLM
 
 
 def extract_queries() -> pd.DataFrame:
@@ -285,18 +290,26 @@ def main():
         db=db, embeddings=embeddings, text_cleaning_strategy=query_cleaning_strategy
     )
 
-    # clean|chunk|store
+    #################### INDEXING (PrepareDocsStrategy) ####################
+    # SETTINGS
     window_size = None
     overlap_size = None
+    pdf_num_split = 3
+    chunk_overlap_rate = 0.2
     docs_cleaning_strategy = DocsCleaningStrategyV2()
-    chunking_strategy = PdfBasedChunking()
+    chunking_strategy = PdfBasedRecursivelySplitChunking(
+        pdf_num_split=pdf_num_split, chunk_overlap_rate=chunk_overlap_rate
+    )
     summarizer = None  # SummarizerLLM(model_name="gemma:2b")
+    context_embedder = ContextEmbedderLLM(model_name="gemma:2b")
+
     prepareDocsStrategy = PrepareDocsStrategy(
         db=db,
         embeddings=embeddings,
         text_cleaning_strategy=docs_cleaning_strategy,
         chunking_strategy=chunking_strategy,
         summarizer=summarizer,
+        context_embedder=context_embedder,
     )
     retriever.prepare_docs(prepareDocsStrategy)
 
@@ -306,6 +319,10 @@ def main():
         "chunking_strategy": prepareDocsStrategy.get_chunking_strategy_name(),
         "window_size": window_size,
         "overlap_size": overlap_size,
+        "pdf_num_split": pdf_num_split,
+        "chunk_overlap_rate": chunk_overlap_rate,
+        "summarizer": True if summarizer else None,
+        "context_embedder": True if context_embedder else None,
     }
 
     annotation_pools = generate_annotation_pools(
