@@ -1,4 +1,4 @@
-from ollama import chat
+import ollama
 
 
 class ContextEmbedderLLM:
@@ -7,7 +7,7 @@ class ContextEmbedderLLM:
         self.model_name = model_name
 
     def embed_context(self, whole_doc: str, chunk_content: str) -> str:
-        user_content = (
+        prompt = (
             "<document>"
             f"{whole_doc}"
             "</document>"
@@ -19,16 +19,18 @@ class ContextEmbedderLLM:
             "Answer only with the succinct context and nothing else. "
         )
 
-        stream = chat(
+        response = ollama.generate(
             model=self.model_name,
-            messages=[{"role": "user", "content": user_content}],
-            stream=True,
+            prompt=prompt,
             options={"temperature": 0.0},
         )
 
-        context = ""
-        for chunk in stream:
-            context += chunk.get("message", {}).get("content", "")
-        context = context.replace("Sure, here's the context you requested:", "").strip()
-        
+        context = (
+            response.response.replace("Sure, here's the context you requested:", "")
+            .replace("Sure, here is the context you requested:", "")
+            .replace("Sure, here's the context:", "")
+            .replace("Sure, here is the context:", "")
+            .strip()
+        )
+
         return f"{context} {chunk_content}"
