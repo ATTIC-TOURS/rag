@@ -21,6 +21,11 @@ from chunking_strategy.pdf_based_recursively_split_chunking import (
 from vector_db.vector_db import MyWeaviateDB
 from summarizer.summarizer import SummarizerLLM
 from contextual_retrieval.context_embedder import ContextEmbedderLLM
+from sentence_transformers.cross_encoder import CrossEncoder
+import time
+from colorama import Fore, init
+
+init(autoreset=True)
 
 
 def extract_queries() -> pd.DataFrame:
@@ -48,9 +53,12 @@ def generate_annotation_pools(
 ) -> pd.DataFrame:
     annotation_pools_data = {"query_id": [], "query": [], "rank": []}
     for query_id, query in queries.to_numpy():
-
+        print(Fore.GREEN + f"retrieving docs for query: {query}")
+        start_time = time.time()
         retrieved_docs = retriever.search(query=query, alpha=alpha, top_k=top_k)
-
+        end_time = time.time()
+        elapsed = end_time - start_time
+        print(f"retrieved {len(retrieved_docs)} docs in {elapsed:.2f} seconds")
         for rank, doc in enumerate(retrieved_docs):
             # dynamically set the column name
             for column in list(doc.properties.keys()):
@@ -268,9 +276,9 @@ def main():
     queries = load_queries()
 
     metadata = {
-        "embeddings": "intfloat/multilingual-e5-base",
         "no_of_questions": len(queries),
-        "reranker": None,
+        "embeddings": "intfloat/multilingual-e5-base",
+        "reranker": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
         "ef_construction": 300,
         "bm25_b": 0.7,
         "bm25_k1": 1.25,
@@ -285,20 +293,25 @@ def main():
         bm25_k1=metadata["bm25_k1"],
     )
     embeddings: SentenceTransformer = SentenceTransformer(metadata["embeddings"])
+    cross_encoder = CrossEncoder(metadata["reranker"])
     query_cleaning_strategy = QueryCleaningStrategyV1()
     retriever = Retriever(
-        db=db, embeddings=embeddings, text_cleaning_strategy=query_cleaning_strategy
+        db=db,
+        embeddings=embeddings,
+        cross_encoder=cross_encoder,
+        text_cleaning_strategy=query_cleaning_strategy,
     )
 
-    #################### INDEXING (PrepareDocsStrategy) ####################
+    #################### INDEXING (PrepareDocsStrategy) START ####################
     # SETTINGS
     window_size = None
     overlap_size = None
-    pdf_num_split = 3
+    pdf_num_split = None
     chunk_overlap_rate = 0.2
     docs_cleaning_strategy = DocsCleaningStrategyV2()
+    max_tokens = embeddings.get_max_seq_length()
     chunking_strategy = PdfBasedRecursivelySplitChunking(
-        pdf_num_split=pdf_num_split, chunk_overlap_rate=chunk_overlap_rate
+        chunk_overlap_rate=chunk_overlap_rate, max_tokens=max_tokens
     )
     summarizer = None  # SummarizerLLM(model_name="gemma:2b")
     context_embedder = ContextEmbedderLLM(model_name="gemma:2b")
@@ -311,7 +324,7 @@ def main():
         summarizer=summarizer,
         context_embedder=context_embedder,
     )
-    retriever.prepare_docs(prepareDocsStrategy)
+    # retriever.prepare_docs(prepareDocsStrategy)
 
     metadata = metadata | {
         "docs_cleaning_strategy": prepareDocsStrategy.get_text_cleaning_strategy_name(),
@@ -323,7 +336,10 @@ def main():
         "chunk_overlap_rate": chunk_overlap_rate,
         "summarizer": True if summarizer else None,
         "context_embedder": True if context_embedder else None,
+        "max_tokens": max_tokens,
     }
+
+    #################### INDEXING (PrepareDocsStrategy) END ####################
 
     annotation_pools = generate_annotation_pools(
         queries, retriever, alpha=metadata["alpha"], top_k=metadata["top_k"]
