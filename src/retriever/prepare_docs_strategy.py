@@ -51,10 +51,12 @@ class PrepareDocsStrategy:
         self.db.setup_collection()
 
         data = []
-        for pdf_file in os.listdir(pdf_dir):
+        pdf_files = os.listdir(pdf_dir)
+        len_pdf_files = len(pdf_files)
+        for current_file_no, pdf_file in enumerate(pdf_files):
             if pdf_file.endswith(".pdf"):
                 pdf_path = os.path.join(pdf_dir, pdf_file)
-                print(Fore.CYAN + f"📄 Processing: {pdf_file}")
+                print(Fore.CYAN + f"{current_file_no+1}/{len_pdf_files} 📄 Processing: {pdf_file}")
 
                 with pymupdf.open(pdf_path) as doc:
                     title = doc.metadata.get("title", "")
