@@ -23,8 +23,11 @@ class PromptStrategyV1(PromptStrategy):
                           """
 
         user_content = f"""
+                        answer the following user query based on the context provided.\n
                         user query: {query}\n
                         context: {" ".join(context)}\n
+                        
+                        your output should be concise
                         """
         messages = [
             {

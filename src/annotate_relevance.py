@@ -314,7 +314,8 @@ def main():
         chunk_overlap_rate=chunk_overlap_rate, max_tokens=max_tokens
     )
     summarizer = None  # SummarizerLLM(model_name="gemma:2b")
-    context_embedder = ContextEmbedderLLM(model_name="gemma:2b")
+    context_embedder_model_name = "gemma3:1b"
+    context_embedder = ContextEmbedderLLM(model_name=context_embedder_model_name)
 
     prepareDocsStrategy = PrepareDocsStrategy(
         db=db,
@@ -324,7 +325,7 @@ def main():
         summarizer=summarizer,
         context_embedder=context_embedder,
     )
-    # retriever.prepare_docs(prepareDocsStrategy)
+    retriever.prepare_docs(prepareDocsStrategy)
 
     metadata = metadata | {
         "docs_cleaning_strategy": prepareDocsStrategy.get_text_cleaning_strategy_name(),
@@ -336,6 +337,7 @@ def main():
         "chunk_overlap_rate": chunk_overlap_rate,
         "summarizer": True if summarizer else None,
         "context_embedder": True if context_embedder else None,
+        "context_embedder_model_name": context_embedder_model_name,
         "max_tokens": max_tokens,
     }
 

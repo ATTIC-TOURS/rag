@@ -42,7 +42,7 @@ def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
     
 def main():
     chatbot = RAG_Chatbot()
-    chatbot.prepare_docs()
+    # chatbot.prepare_docs()
     run_prototype(chatbot)
 
 

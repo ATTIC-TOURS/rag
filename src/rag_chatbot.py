@@ -13,6 +13,11 @@ from chunking_strategy.fixed_window_chunking import FixedWindowChunking
 from vector_db.vector_db import MyWeaviateDB
 from prompts.strategy_base import PromptStrategy
 from prompts.strategy_v1 import PromptStrategyV1
+from sentence_transformers.cross_encoder import CrossEncoder
+from contextual_retrieval.context_embedder import ContextEmbedderLLM
+from chunking_strategy.pdf_based_recursively_split_chunking import (
+    PdfBasedRecursivelySplitChunking,
+)
 
 init(autoreset=True)
 
@@ -27,24 +32,31 @@ class RAG_Chatbot:
             ef_construction=300, bm25_b=0.7, bm25_k1=1.25
         )
         query_cleaning_strategy = QueryCleaningStrategyV1()
+        cross_encoder = CrossEncoder("cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
         self.retriever = Retriever(
             db=self.db,
             embeddings=self.embeddings,
             text_cleaning_strategy=query_cleaning_strategy,
+            cross_encoder=cross_encoder,
         )
 
     def prepare_docs(self) -> None:
 
-        text_cleaning_strategy: TextCleaningStrategy = DocsCleaningStrategyV2()
-        chunking_strategy: ChunkingStrategy = FixedWindowChunking(
-            window_size=100, overlap_size=50
+        docs_cleaning_strategy: TextCleaningStrategy = DocsCleaningStrategyV2()
+
+        max_tokens = self.embeddings.get_max_seq_length()
+        chunking_strategy = PdfBasedRecursivelySplitChunking(
+            chunk_overlap_rate=0.2, max_tokens=max_tokens
         )
+   
+        context_embedder = ContextEmbedderLLM(model_name="gemma3:1b")
 
         prepareDocsStrategy = PrepareDocsStrategy(
             db=self.db,
             embeddings=self.embeddings,
-            text_cleaning_strategy=text_cleaning_strategy,
+            text_cleaning_strategy=docs_cleaning_strategy,
             chunking_strategy=chunking_strategy,
+            context_embedder=context_embedder,
         )
         self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy)
 
@@ -61,7 +73,7 @@ class RAG_Chatbot:
         return promptStrategy.get_messages(query, context)
 
     def _generate_response(self, messages: list[dict[str, str]]):
-        stream = ollama.chat(model="gemma:2b", messages=messages, stream=True)
+        stream = ollama.chat(model="gemma3:1b", messages=messages, stream=True)
         for chunk in stream:
             content = chunk.get("message", {}).get("content", "")
             if content:
@@ -75,7 +87,11 @@ class RAG_Chatbot:
 
 def main():
     chatbot = RAG_Chatbot()
-    chatbot.prepare_docs()
+    while True:
+        query = input('query:')
+        relevant_docs = chatbot._retrieved_relevant_docs(query)
+        messages = chatbot._get_messages(query, relevant_docs)
+        print(f'{messages[0]["content"]} {messages[1]["content"]}')
 
 
 if __name__ == "__main__":
