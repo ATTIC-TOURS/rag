@@ -20,19 +20,28 @@ from chunking_strategy.pdf_based_recursively_split_chunking import (
 )
 from sklearn.pipeline import Pipeline
 import joblib
-from classifier.japan_visa_related_or_not.modules import MyTextCleaner, EmbeddingTransformer
+from classifier.japan_visa_related_or_not.modules import (
+    MyTextCleaner,
+    EmbeddingTransformer,
+)
 
 init(autoreset=True)
 
 
 class RAG_Chatbot:
 
-    def __init__(self, collection_name: str = 'Requirements'):
+    def __init__(self, collection_name: str = "Requirements"):
+        self.related_or_not_clf: Pipeline = joblib.load(
+            "classifier/japan_visa_related_or_not/japan_visa_related_classifier.pkl"
+        )
         self.embeddings: SentenceTransformer = SentenceTransformer(
             "intfloat/multilingual-e5-base"
         )
         self.db: MyWeaviateDB = MyWeaviateDB(
-            ef_construction=300, bm25_b=0.7, bm25_k1=1.25, collection_name=collection_name
+            ef_construction=300,
+            bm25_b=0.7,
+            bm25_k1=1.25,
+            collection_name=collection_name,
         )
         query_cleaning_strategy = QueryCleaningStrategyV1()
         cross_encoder = CrossEncoder("cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
@@ -51,7 +60,7 @@ class RAG_Chatbot:
         chunking_strategy = PdfBasedRecursivelySplitChunking(
             chunk_overlap_rate=0.2, max_tokens=max_tokens
         )
-   
+
         context_embedder = ContextEmbedderLLM(model_name="gemma3:1b")
 
         prepareDocsStrategy = PrepareDocsStrategy(
@@ -61,7 +70,9 @@ class RAG_Chatbot:
             chunking_strategy=chunking_strategy,
             context_embedder=context_embedder,
         )
-        self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy, from_google_drive=from_google_drive)
+        self.retriever.prepare_docs(
+            prepareDocsStrategy=prepareDocsStrategy, from_google_drive=from_google_drive
+        )
 
     def _retrieved_relevant_docs(
         self, query: str, alpha: int = 0.8, top_k: int = 3
@@ -86,25 +97,44 @@ class RAG_Chatbot:
                 yield content
 
     def answer(self, query: str) -> str:
-        relevant_docs = self._retrieved_relevant_docs(query, top_k=5)  # retriever
-        messages = self._get_messages(query=query, context=relevant_docs)  # prompt
-        return self._generate_response(messages)  # generation
+        is_japan_visa_related = bool(self.related_or_not_clf.predict([query]))
+        if is_japan_visa_related:
+            relevant_docs = self._retrieved_relevant_docs(query, top_k=5)  # retriever
+            messages = self._get_messages(query=query, context=relevant_docs)  # prompt
+            return self._generate_response(messages)  # generation
+        else:
+            return self._generate_response(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are assistant in Japan Visa related in Attic Tours Company."
+                            "You should be helpful."
+                            "The response must be restrictly related in Japan Visa."
+                            "You have to respect them."
+                        ),
+                    },
+                    {"role": "user", "content": f"respond to the following query\nquery: {query}"},
+                ]
+            )
 
 
 def main():
-    chatbot = RAG_Chatbot(collection_name='test')
+    chatbot = RAG_Chatbot(collection_name="test")
     # chatbot.prepare_docs(from_google_drive=True)
-    clf_japan_visa_related: Pipeline = joblib.load('classifier/japan_visa_related_or_not/japan_visa_related_classifier.pkl')
+    clf_japan_visa_related: Pipeline = joblib.load(
+        "classifier/japan_visa_related_or_not/japan_visa_related_classifier.pkl"
+    )
     while True:
-        query = input('query:')
+        query = input("query:")
         is_japan_visa_related = clf_japan_visa_related.predict([query])[0]
         if is_japan_visa_related:
-            print(Fore.GREEN + 'your query is related to Japan Visa')
+            print(Fore.GREEN + "your query is related to Japan Visa")
             relevant_docs = chatbot._retrieved_relevant_docs(query)
             messages = chatbot._get_messages(query, relevant_docs)
             print(f'{messages[0]["content"]} {messages[1]["content"]}')
         else:
-            print(Fore.RED + 'only Japan Visa related is allowed')
+            print(Fore.RED + "only Japan Visa related is allowed")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,9 @@
 import gradio as gr
 from rag_chatbot import RAG_Chatbot
+from classifier.japan_visa_related_or_not.modules import (
+    MyTextCleaner,
+    EmbeddingTransformer,
+)
 
 
 def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
@@ -17,8 +21,12 @@ def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
 
             # 2. Show placeholder while retrieving docs
             chat_history.append(
-                {"role": "assistant", "content": "⏳ Retrieving relevant documents...","name": "Attic Bot",
-                "avatar": "🤖",}
+                {
+                    "role": "assistant",
+                    "content": "thinking..",
+                    "name": "Attic Bot",
+                    "avatar": "🤖",
+                }
             )
             yield "", chat_history
 
@@ -38,11 +46,11 @@ def run_prototype(rag_chatbot: RAG_Chatbot) -> None:
 
         msg.submit(respond, [msg, chatbot], [msg, chatbot], queue=True)
     demo.launch(share=True)
-    
-    
+
+
 def main():
     chatbot = RAG_Chatbot()
-    # chatbot.prepare_docs()
+    chatbot.prepare_docs(from_google_drive=True)
     run_prototype(chatbot)
 
 
