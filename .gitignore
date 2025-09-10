@@ -10,3 +10,4 @@ annotations
 credentials.json
 service_account_key.json
 token.json
+japan_visa_related_classifier.pkl
