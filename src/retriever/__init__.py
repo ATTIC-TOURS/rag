@@ -31,6 +31,8 @@ class Retriever:
     def search(self, query: str, alpha: int = 1, N: int = 20, top_k: int = 3):
         query = self.text_cleaning_strategy.clean_text(query)
         initial_retrieved_docs = self.db.search(query=query, embeddings=self.embeddings, alpha=alpha, limit=N)
+        if not initial_retrieved_docs:
+            return None
         query_doc_pairs = [[query, doc.properties["content"]] for doc in initial_retrieved_docs]
         scores = self.cross_encoder.predict(query_doc_pairs)
         retrieved_docs = sorted(zip(initial_retrieved_docs, scores), key=lambda x: x[1], reverse=True)

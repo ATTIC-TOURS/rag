@@ -67,8 +67,11 @@ class RAG_Chatbot:
         self, query: str, alpha: int = 0.8, top_k: int = 3
     ) -> list[str]:
         relevant_docs = []
-        for relevant_doc in self.retriever.search(query, alpha=alpha, top_k=top_k):
-            relevant_docs.append(relevant_doc.properties["content"])
+        query_relevant_docs = self.retriever.search(query, alpha=alpha, top_k=top_k)
+        if not query_relevant_docs:
+            return []
+        for query_relevant_doc in query_relevant_docs:
+            relevant_docs.append(query_relevant_doc.properties["content"])
         return relevant_docs
 
     def _get_messages(self, query: str, context: list[str]) -> list[dict[str, str]]:
