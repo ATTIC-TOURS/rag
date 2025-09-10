@@ -1,5 +1,5 @@
 from retriever import Retriever
-from colorama import init
+from colorama import init, Fore
 from sentence_transformers import SentenceTransformer
 import ollama
 from retriever.prepare_docs_strategy import PrepareDocsStrategy
@@ -18,6 +18,9 @@ from contextual_retrieval.context_embedder import ContextEmbedderLLM
 from chunking_strategy.pdf_based_recursively_split_chunking import (
     PdfBasedRecursivelySplitChunking,
 )
+from sklearn.pipeline import Pipeline
+import joblib
+from classifier.japan_visa_related_or_not.modules import MyTextCleaner, EmbeddingTransformer
 
 init(autoreset=True)
 
@@ -87,12 +90,18 @@ class RAG_Chatbot:
 
 def main():
     chatbot = RAG_Chatbot(collection_name='test')
-    chatbot.prepare_docs(from_google_drive=True)
+    # chatbot.prepare_docs(from_google_drive=True)
+    clf_japan_visa_related: Pipeline = joblib.load('classifier/japan_visa_related_or_not/japan_visa_related_classifier.pkl')
     while True:
         query = input('query:')
-        relevant_docs = chatbot._retrieved_relevant_docs(query)
-        messages = chatbot._get_messages(query, relevant_docs)
-        print(f'{messages[0]["content"]} {messages[1]["content"]}')
+        is_japan_visa_related = clf_japan_visa_related.predict([query])[0]
+        if is_japan_visa_related:
+            print(Fore.GREEN + 'your query is related to Japan Visa')
+            relevant_docs = chatbot._retrieved_relevant_docs(query)
+            messages = chatbot._get_messages(query, relevant_docs)
+            print(f'{messages[0]["content"]} {messages[1]["content"]}')
+        else:
+            print(Fore.RED + 'only Japan Visa related is allowed')
 
 
 if __name__ == "__main__":
