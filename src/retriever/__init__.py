@@ -22,7 +22,10 @@ class Retriever:
     def get_text_cleaning_strategy_name(self) -> str:
         return self.text_cleaning_strategy.get_strategy_name()
 
-    def prepare_docs(self, prepareDocsStrategy: PrepareDocsStrategy):
+    def prepare_docs(self, prepareDocsStrategy: PrepareDocsStrategy, from_google_drive: bool = False):
+        if from_google_drive:
+            prepareDocsStrategy.prepare_docs_from_google_drive()
+            return
         prepareDocsStrategy.prepare_docs()
 
     def search(self, query: str, alpha: int = 1, N: int = 20, top_k: int = 3):

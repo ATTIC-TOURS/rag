@@ -7,3 +7,6 @@ data_annotation
 __pycache__
 certificate.pem
 annotations
+credentials.json
+service_account_key.json
+token.json

@@ -24,12 +24,12 @@ init(autoreset=True)
 
 class RAG_Chatbot:
 
-    def __init__(self):
+    def __init__(self, collection_name: str = 'Requirements'):
         self.embeddings: SentenceTransformer = SentenceTransformer(
             "intfloat/multilingual-e5-base"
         )
         self.db: MyWeaviateDB = MyWeaviateDB(
-            ef_construction=300, bm25_b=0.7, bm25_k1=1.25
+            ef_construction=300, bm25_b=0.7, bm25_k1=1.25, collection_name=collection_name
         )
         query_cleaning_strategy = QueryCleaningStrategyV1()
         cross_encoder = CrossEncoder("cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
@@ -40,7 +40,7 @@ class RAG_Chatbot:
             cross_encoder=cross_encoder,
         )
 
-    def prepare_docs(self) -> None:
+    def prepare_docs(self, from_google_drive: bool = False) -> None:
 
         docs_cleaning_strategy: TextCleaningStrategy = DocsCleaningStrategyV2()
 
@@ -58,7 +58,7 @@ class RAG_Chatbot:
             chunking_strategy=chunking_strategy,
             context_embedder=context_embedder,
         )
-        self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy)
+        self.retriever.prepare_docs(prepareDocsStrategy=prepareDocsStrategy, from_google_drive=from_google_drive)
 
     def _retrieved_relevant_docs(
         self, query: str, alpha: int = 0.8, top_k: int = 3
@@ -86,7 +86,8 @@ class RAG_Chatbot:
 
 
 def main():
-    chatbot = RAG_Chatbot()
+    chatbot = RAG_Chatbot(collection_name='test')
+    chatbot.prepare_docs(from_google_drive=True)
     while True:
         query = input('query:')
         relevant_docs = chatbot._retrieved_relevant_docs(query)
