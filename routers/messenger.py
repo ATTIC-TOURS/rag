@@ -4,13 +4,12 @@ from typing import Annotated
 from ..models.messenger import Message
 from ..rag_pipeline.rag_pipeline import RagPipeline
 from dotenv import load_dotenv
-import os 
+import os
 import requests
-import httpx
-import asyncio
 
 load_dotenv()
 PAGE_ACCESS_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")  # Or set directly
+VERIFY_TOKEN = os.getenv("VERIFICATION_TOKEN")
 FB_SEND_API_URL = "https://graph.facebook.com/v17.0/me/messages"
 rag_pipeline: RagPipeline
 
@@ -24,8 +23,6 @@ async def lifespan(app: APIRouter):
 
 
 router = APIRouter(lifespan=lifespan, prefix="/chat", tags=["messenger"])
-
-VERIFY_TOKEN = "my_secret_token"
 
 
 @router.get("/messenger-webhook")
@@ -41,12 +38,9 @@ async def verify_meta(request: Request):
 
 
 async def send_message(recipient_id: str, text: str):
-    
-    text = await inquire(Message(**{'text': text}))
-    payload = {
-        "recipient": {"id": recipient_id},
-        "message": {"text": text}
-    }
+
+    text = await inquire(Message(**{"text": text}))
+    payload = {"recipient": {"id": recipient_id}, "message": {"text": text}}
     params = {"access_token": PAGE_ACCESS_TOKEN}
     response = requests.post(FB_SEND_API_URL, params=params, json=payload)
     print("Sent message response:", response.json())
@@ -56,15 +50,17 @@ async def send_message(recipient_id: str, text: str):
 async def messenger_webhook(request: Request):
     data = await request.json()
     print("Webhook received:", data)
-    
-    
-    # ✅ Real Messenger webhook format
+
     if "entry" in data:
         for entry in data["entry"]:
             for messaging in entry.get("messaging", []):
                 sender_id = messaging["sender"]["id"]
                 payload = {"recipient": {"id": sender_id}, "sender_action": "typing_on"}
-                requests.post(FB_SEND_API_URL, params={"access_token": PAGE_ACCESS_TOKEN}, json=payload)
+                requests.post(
+                    FB_SEND_API_URL,
+                    params={"access_token": PAGE_ACCESS_TOKEN},
+                    json=payload,
+                )
                 if "message" in messaging:
                     text = messaging["message"].get("text", "")
                     print(f"[REAL] User {sender_id} said: {text}")
