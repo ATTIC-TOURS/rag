@@ -1,12 +1,12 @@
 ## Appendix B. Survey Questionnaires
 
-### B.1 Survey Questionnaire for Travel Agency Staff
+### B.1 Survey on Travel Agency Staff Experiences in Handling Japan Visa Inquiries via Messenger
 
-This questionnaire is designed to gather information from staff members regarding their experiences in handling visa-related inquiries. The data collected will be used solely for academic purposes to analyze service response time, consistency, workload, and availability in the Japan visa application process.
+This survey aims to gather insights from travel agency staff about their workload, response times, consistency, and common customer questions when handling Japan visa inquiries through Messenger. The results will be used for academic research to identify challenges and areas for improvement in customer support.
 
 #### Section A: Workload and Response
 
-1. On a typical working day, how many visa inquiries (phone, email, or walk-in) do you personally handle?
+1. On a typical working day, how many Japan visa inquiries via Messenger do you personally handle?
 
     - ☐ Fewer than 10
 
@@ -16,7 +16,7 @@ This questionnaire is designed to gather information from staff members regardin
 
     - ☐ More than 40
 
-2. How often do you feel overwhelmed by the number of customer inquiries?
+2. How often do you feel overwhelmed by the number of Messenger inquiries from customers?
 
     - ☐ Never
 
@@ -30,19 +30,19 @@ This questionnaire is designed to gather information from staff members regardin
 
 #### Section B: Response Speed and Consistency
 
-3. In your opinion, does the agency respond to customer inquiries quickly enough?
+3. On average, how long does it take for you (or the agency) to respond to Messenger inquiries about Japan visa applications?
 
-    - ☐ Always
+    - ☐ Less than 15 minutes
 
-    - ☐ Most of the time
+    - ☐ 15–30 minutes
 
-    - ☐ Sometimes
+    - ☐ 30–60 minutes
 
-    - ☐ Rarely
+    - ☐ More than 1 hour
 
-    - ☐ Never
+    - ☐ More than 1 day
 
-4. How easy is it for you to provide customers with consistent answers (without contradictions from other staff members)?
+4. How easy is it for you to provide customers with consistent answers on Messenger (without contradictions from other staff)?
 
     - ☐ Very easy
 
@@ -56,7 +56,7 @@ This questionnaire is designed to gather information from staff members regardin
 
 #### Section C: Availability and Out-of-Hours Support
 
-5. What usually happens when customers send inquiries outside of regular office hours?
+5. What usually happens when customers send Messenger inquiries outside of regular office hours?
 
     - ☐ They are answered immediately
 
@@ -66,7 +66,23 @@ This questionnaire is designed to gather information from staff members regardin
 
 #### Section D: Improvements
 
-6. In your opinion, what improvements would help you respond faster and more consistently to customer inquiries?
+6. In your opinion, what improvements would help you respond faster and more consistently to Messenger inquiries about Japan visas?
+
+#### Section E: Common Questions
+
+7. From your experience, what are the top 3–5 most frequently asked questions about Japan visa inquiries you receive on Messenger?
+
+8. How often do you receive repeated questions from different customers (e.g., the same requirement being asked multiple times in one week)?
+
+    - ☐ Rarely (less than once a week)
+
+    - ☐ Occasionally (1–2 times a week)
+
+    - ☐ Frequently (3–5 times a week)
+
+    - ☐ Very frequently (almost daily)
+
+    - ☐ Always (multiple times daily)
 
 ### B.2 Survey for Evaluating the Prototype (Travel Agency Staff as Testers)
 
