@@ -84,6 +84,18 @@ This survey aims to gather insights from travel agency staff about their workloa
 
     - ☐ Always (multiple times daily)
 
+#### F: Messenger Inquiry Language
+
+9. In what language are Japan visa inquiries on Messenger most frequently received?
+
+    - ☐ Mostly Tagalog
+
+    - ☐ Mostly English
+
+    - ☐ Mix of Tagalog and English (Taglish)
+
+    - ☐ Other (please specify)
+
 ### B.2 Survey for Evaluating the Prototype (Travel Agency Staff as Testers)
 
 This survey was given to travel agency staff who tested the RAG-based Japan Visa Chatbot prototype. It aimed to evaluate the chatbot’s accuracy, response speed, and usefulness through Likert scale and open-ended questions. The results provide insights into the system’s consistency, reliability, timeliness, and its potential to lessen staff workload while improving customer service.
