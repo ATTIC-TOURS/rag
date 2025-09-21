@@ -7,5 +7,6 @@ preprocess(
     embeddings_model_name='intfloat/multilingual-e5-base',
     chunk_overlap_rate=0.2,
     max_token=500,
-    add_context=False
+    add_context=True,
+    context_augment_model_name='gemma3:1b'
 )

@@ -63,7 +63,13 @@ def set_embeddings(model_name: str):
     print(Fore.BLUE + f'{model_name}')
 
 
-def split_documents(documents: list[Document], chunk_overlap_rate: float, max_tokens: int, add_context: bool = False, context_augment_model_name: str = 'gemma3:1b') -> TextNode:
+def split_documents(
+    documents: list[Document], 
+    chunk_overlap_rate: float, 
+    max_tokens: int, 
+    add_context: bool = False, 
+    context_augment_model_name: str | None = None
+) -> TextNode:
     splitter = PdfBasedCustomSplitter(chunk_overlap_rate=chunk_overlap_rate, max_tokens=max_tokens)
     
     nodes = []
@@ -121,7 +127,15 @@ def remove_all_index():
         if client:
             client.close()
 
-def preprocess(data_path: str, index_name: str, embeddings_model_name: str, chunk_overlap_rate: float, max_token: int, add_context: bool):
+def preprocess(
+    data_path: str, 
+    index_name: str, 
+    embeddings_model_name: str, 
+    chunk_overlap_rate: float, 
+    max_token: int, 
+    add_context: bool, 
+    context_augment_model_name: str | None = None
+):
     """
     stores the document into vector database for search and retrieve query relevant documents
 
@@ -146,7 +160,13 @@ def preprocess(data_path: str, index_name: str, embeddings_model_name: str, chun
     documents = clean_documents(documents)
 
     # # step 3 - split documents (w/ context augmented)
-    nodes = split_documents(documents=documents, chunk_overlap_rate=chunk_overlap_rate, max_tokens=max_token, add_context=add_context)
+    nodes = split_documents(
+        documents=documents, 
+        chunk_overlap_rate=chunk_overlap_rate, 
+        max_tokens=max_token, 
+        add_context=add_context, 
+        context_augment_model_name=context_augment_model_name
+    )
 
     # # step 4 - store embeddings to the vector database
     store_nodes(nodes=nodes, index_name=index_name)
