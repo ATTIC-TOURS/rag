@@ -1,31 +1,112 @@
-from .retriever.retriever import Retriever
-from colorama import init, Fore
-from sentence_transformers import SentenceTransformer
-import ollama
-from .retriever.prepare_docs_strategy import PrepareDocsStrategy
-from .text_cleaning_strategy.base import TextCleaningStrategy
-from .text_cleaning_strategy.docs.v1 import DocsCleaningStrategyV1
-from .text_cleaning_strategy.docs.v2 import DocsCleaningStrategyV2
-from .text_cleaning_strategy.query.v1 import QueryCleaningStrategyV1
-from .chunking_strategy.base import ChunkingStrategy
-from .chunking_strategy.v1 import ChunkingStrategyV1
-from .chunking_strategy.fixed_window_chunking import FixedWindowChunking
-from .vector_db.vector_db import MyWeaviateDB
-from .prompts.strategy_base import PromptStrategy
-from .prompts.strategy_v1 import PromptStrategyV1
-from sentence_transformers.cross_encoder import CrossEncoder
-from .context_augment.context_embedder import ContextEmbedderLLM
-from .chunking_strategy.pdf_based_recursively_split_chunking import (
-    PdfBasedRecursivelySplitChunking,
-)
-from sklearn.pipeline import Pipeline
-import joblib
-from .classifier.japan_visa_related_or_not.modules import (
-    MyTextCleaner,
-    MyEmbeddingTransformer,
-)
+# from .retriever.retriever import Retriever
+# from colorama import init, Fore
+# from sentence_transformers import SentenceTransformer
+# import ollama
+# from .retriever.prepare_docs_strategy import PrepareDocsStrategy
+# from .text_cleaning_strategy.base import TextCleaningStrategy
+# from .text_cleaning_strategy.docs.v1 import DocsCleaningStrategyV1
+# from .text_cleaning_strategy.docs.v2 import DocsCleaningStrategyV2
+# from .text_cleaning_strategy.query.v1 import QueryCleaningStrategyV1
+# from .chunking_strategy.base import ChunkingStrategy
+# from .chunking_strategy.v1 import ChunkingStrategyV1
+# from .chunking_strategy.fixed_window_chunking import FixedWindowChunking
+# from .vector_db.vector_db import MyWeaviateDB
+# from .prompts.strategy_base import PromptStrategy
+# from .prompts.strategy_v1 import PromptStrategyV1
+# from sentence_transformers.cross_encoder import CrossEncoder
+# from .context_augment.context_embedder import ContextEmbedderLLM
+# from .chunking_strategy.pdf_based_recursively_split_chunking import (
+#     PdfBasedRecursivelySplitChunking,
+# )
+# from sklearn.pipeline import Pipeline
+# import joblib
+# from .classifier.japan_visa_related_or_not.modules import (
+#     MyTextCleaner,
+#     MyEmbeddingTransformer,
+# )
 
-init(autoreset=True)
+# init(autoreset=True)
+
+
+from llama_index.llms.ollama import Ollama
+from llama_index.vector_stores.weaviate import WeaviateVectorStore
+from llama_index.core import StorageContext, VectorStoreIndex
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SentenceTransformerRerank
+from llama_index.core.response_synthesizers import get_response_synthesizer
+from llama_index.core.prompts import PromptTemplate
+import weaviate
+from .preprocessing.preprocessing import set_embeddings
+
+connection_config = {"port": 8080, "grpc_port": 50051, "skip_init_checks": True}
+
+def build_rag_pipeline(
+    index_name: str,
+    embeddings_model_name: str,
+    model: str,
+    similarity_top_k: int,
+    alpha: float,
+    cross_encoder_model: str | None = None,
+    rerank_top_n: int | None = None
+):
+    """
+    Build a RAG pipeline with:
+      - Weaviate hybrid retriever
+      - CrossEncoder reranker
+      - Ollama as generator
+    """
+    # 1. Connect to Weaviate
+    client = weaviate.connect_to_local(**connection_config)
+    vector_store = WeaviateVectorStore(weaviate_client=client, index_name=index_name)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    
+    set_embeddings(embeddings_model_name)
+    
+    # 2. Build index
+    index = VectorStoreIndex([], storage_context=storage_context)
+
+    # 3. Base retriever
+    retriever = index.as_retriever(
+        similarity_top_k=similarity_top_k,
+        mode="hybrid",
+        alpha=alpha
+    )
+
+    # 4. Reranker (CrossEncoder from Hugging Face)
+    if cross_encoder_model:
+        reranker = SentenceTransformerRerank(
+            model=cross_encoder_model,
+            top_n=rerank_top_n
+        )
+
+    # 5. Ollama LLM
+    llm = Ollama(
+        model=model,
+        base_url="http://localhost:11434",
+        request_timeout=300
+    )
+    
+    my_prompt_template = PromptTemplate(
+        "You are a helpful assistant that answers Japan visa questions.\n\n"
+        "Question: {query_str}\n\n"
+        "Here are the retrieved documents:\n{context_str}\n\n"
+        "Answer clearly and concisely."
+    )
+    
+    response_synthesizer = get_response_synthesizer(
+        llm=llm,
+        text_qa_template=my_prompt_template
+    )
+
+    # 6. Query engine with retriever + reranker + generator
+    query_engine = RetrieverQueryEngine(
+        retriever=retriever,
+        node_postprocessors=[reranker] if cross_encoder_model else None,  # reranker runs after retriever
+        response_synthesizer=response_synthesizer,
+    )
+
+    return query_engine, client
 
 
 class RagPipeline:
