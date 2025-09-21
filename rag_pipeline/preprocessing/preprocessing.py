@@ -59,7 +59,6 @@ def set_embeddings(model_name: str):
     hf_model = SentenceTransformer(model_name)
     embed_model = MyEmbeddings(hf_model)
     Settings.embed_model = embed_model
-    Settings.llm = None
     print('Global embeddings set to model: ', end='')
     print(Fore.BLUE + f'{model_name}')
 
@@ -137,7 +136,7 @@ def preprocess(data_path: str, index_name: str, embeddings_model_name: str, chun
     start = time.time()  # record start time
 
     remove_index(index_name=index_name)
-    
+    Settings.llm = None
     set_embeddings(model_name=embeddings_model_name)
 
     # step 1 - retrieve all documents
