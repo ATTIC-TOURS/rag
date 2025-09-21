@@ -2,7 +2,7 @@ from ..vector_db.vector_db import MyWeaviateDB
 from sentence_transformers import SentenceTransformer
 from ..text_cleaning_strategy.base import TextCleaningStrategy
 from ..chunking_strategy.base import ChunkingStrategy
-from ..contextual_retrieval.context_embedder import ContextEmbedderLLM
+from ..context_augment.context_embedder import ContextEmbedderLLM
 from llama_index.readers.google import GoogleDriveReader
 import pymupdf
 import os

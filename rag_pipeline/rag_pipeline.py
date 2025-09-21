@@ -14,7 +14,7 @@ from .vector_db.vector_db import MyWeaviateDB
 from .prompts.strategy_base import PromptStrategy
 from .prompts.strategy_v1 import PromptStrategyV1
 from sentence_transformers.cross_encoder import CrossEncoder
-from .contextual_retrieval.context_embedder import ContextEmbedderLLM
+from .context_augment.context_embedder import ContextEmbedderLLM
 from .chunking_strategy.pdf_based_recursively_split_chunking import (
     PdfBasedRecursivelySplitChunking,
 )

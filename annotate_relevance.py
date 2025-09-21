@@ -19,7 +19,7 @@ from rag_pipeline.chunking_strategy.pdf_based_recursively_split_chunking import 
     PdfBasedRecursivelySplitChunking,
 )
 from rag_pipeline.vector_db.vector_db import MyWeaviateDB
-from rag_pipeline.contextual_retrieval.context_embedder import ContextEmbedderLLM
+from rag_pipeline.context_augment.context_embedder import ContextEmbedderLLM
 from sentence_transformers.cross_encoder import CrossEncoder
 import time
 from colorama import Fore, init
