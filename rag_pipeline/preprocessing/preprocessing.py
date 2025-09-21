@@ -11,9 +11,9 @@ from llama_index.core.schema import TextNode
 import weaviate
 import uuid
 import os
-import copy
 
 
+# connection settings to weaviate (vector database)
 connection_config = {"port": 8080, "grpc_port": 50051, "skip_init_checks": True}
 
 def retrieve_documents(directory: str):
@@ -120,42 +120,30 @@ def remove_all_index():
         if client:
             client.close()
 
-def split_and_store(
-    documents, index_name: str, chunk_overlap_rate: float, max_tokens: int
-):
-    client = None
-    try:
-        client = weaviate.connect_to_local(**connection_config)
-        vector_store = WeaviateVectorStore(
-            weaviate_client=client, index_name=index_name
-        )
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        splitter = PdfBasedCustomSplitter(
-            chunk_overlap_rate=chunk_overlap_rate, max_tokens=max_tokens
-        )
-        index = VectorStoreIndex.from_documents(
-            documents, storage_context=storage_context, text_splitter=splitter
-        )
-        return index
-    except Exception as e:
-        print("error in split_and_store")
-        print(e)
-    finally:
-        if client:
-            client.close()
-
-
-def preprocess():
+def preprocess(data_path: str, index_name: str, embeddings_model_name: str, chunk_overlap_rate: float, max_token: int, add_context: bool):
     """
     stores the document into vector database for search and retrieve query relevant documents
 
-    args
-        document: str - text document
-
     steps to process
-    1. clean text
-    2. split text
-    3. augment document context for each splitted document (chunks) - I/O bound
-    4. get embeddings
-    5. store embeddings to vector database - I/O bound
+        1. retrieve all documents
+        2. clean documents
+        3. split documents (w/ context augmented)
+        4. set embeddings as global
+        5. store embeddings to the vector database - I/O bound
     """
+    remove_index(index_name=index_name)
+
+    # step 1 - retrieve all documents
+    documents = retrieve_documents(data_path)
+
+    # step 2 - clean documents
+    documents = clean_documents(documents)
+
+    # step 3 - split documents (w/ context augmented)
+    nodes = split_documents(documents=documents, chunk_overlap_rate=chunk_overlap_rate, max_tokens=max_token, add_context=add_context)
+
+    # step 4 - set embeddings as global
+    set_embeddings(model_name=embeddings_model_name)
+
+    # step 5 - store embeddings to the vector database
+    store_nodes(nodes=nodes, index_name=index_name)
