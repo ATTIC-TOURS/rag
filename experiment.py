@@ -142,6 +142,8 @@ def run_experiment(params, openai_api_key):
 def log_results(params, metrics):
     record = {**params, **metrics}
 
+    del record['openai_api_key']
+    
     if os.path.exists(RESULTS_FILE):
         df = pd.read_csv(RESULTS_FILE)
         df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
