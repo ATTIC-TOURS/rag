@@ -19,6 +19,8 @@ from datasets import Dataset
 from rag_pipeline.rag_pipeline import build_rag_pipeline
 from llama_index.core.prompts import PromptTemplate
 from dotenv import load_dotenv
+from colorama import init, Fore
+init(autoreset=True)
 
 load_dotenv()
 
@@ -58,8 +60,10 @@ def transform_queries(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_queries() -> pd.DataFrame:
+    print(Fore.CYAN + 'Loading Query and Answer pairs from Google Spreadsheet..')
     df = extract_queries()
     df = transform_queries(df)
+    print(Fore.CYAN + f'💿 Total Rows: {len(df)} retrieved')
     return df
 
 
@@ -73,11 +77,14 @@ def run_experiment(params, openai_api_key):
     """
     Run one experiment with given params, return averaged metrics + latency.
     """
+    
     query_engine, client = build_rag_pipeline(**params)
 
     results = []
     latencies = []
 
+    # Generate response for each query
+    print(Fore.BLUE + f'🤖 generating response..')
     for q in EVAL_QUERIES:
         start = time.time()
         response = query_engine.query(q["question"])
@@ -92,6 +99,7 @@ def run_experiment(params, openai_api_key):
                 "ground_truth": q["ground_truth"],
             }
         )
+    print(Fore.BLUE + f'response has been generated')
 
     client.close()
 
@@ -112,6 +120,7 @@ def run_experiment(params, openai_api_key):
 
     run_config = RunConfig(timeout=7200)
 
+    print(Fore.BLUE + 'evaluating..')
     eval_results = evaluate(
         dataset,
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
@@ -140,8 +149,13 @@ def log_results(params, metrics):
         df = pd.DataFrame([record])
 
     df.to_csv(RESULTS_FILE, index=False)
-    print(f"✅ Logged experiment with params={params}")
+    print(Fore.BLUE + f"📃 Logged experiment: {record}")
 
+def count_experiment_variables(vars):
+    count = 1
+    for var in vars:
+        count *= len(var)
+    return count
 
 def run_all_experiments(openai_api_key):
     """
@@ -159,30 +173,42 @@ def run_all_experiments(openai_api_key):
             "Answer clearly and concisely."
         ),
     ]
+    
+    num_variables = count_experiment_variables([
+        similarity_top_k_values,
+        alpha_values,
+        rerank_options,
+        prompt_templates
+    ])
+    
+    print(Fore.GREEN + f'Total Experiment: {num_variables}')
 
+    current_ongoing_experiment = 1
     for top_k in similarity_top_k_values:
         for alpha in alpha_values:
             for reranker in rerank_options:
                 for prompt_template in prompt_templates:
                     params = {
-                        "index_name": "Requirements",  # ok
-                        "embeddings_model_name": "intfloat/multilingual-e5-base",  # ok
-                        "llm_model_name": "gemma3:1b",  # ok
-                        "similarity_top_k": top_k,  # ok
-                        "alpha": alpha,  # ok
-                        "prompt_template": prompt_template,  # ok
-                        "cross_encoder_model": reranker,  # ok
-                        "rerank_top_n": 2 if reranker else None,  # ok
-                        "llm_provider": "ollama",  # ok
-                        "openai_api_key": openai_api_key,  # ok
+                        "index_name": "Requirements",
+                        "embeddings_model_name": "intfloat/multilingual-e5-base",
+                        "llm_model_name": "gemma3:1b",  
+                        "similarity_top_k": top_k,  
+                        "alpha": alpha,  
+                        "prompt_template": prompt_template, 
+                        "cross_encoder_model": reranker,
+                        "rerank_top_n": 1 if reranker else None, 
+                        "llm_provider": "ollama",  
+                        "openai_api_key": openai_api_key,  
                     }
 
                     try:
+                        print(Fore.GREEN + f'🟢 {current_ongoing_experiment}/{num_variables} running experiment on params: {params}')
                         metrics = run_experiment(params, openai_api_key)
                         log_results(params, metrics)
                     except Exception as e:
                         print(f"❌ Failed experiment {params}: {e}")
-
+                        
+    print(Fore.GREEN + f"✅ {num_variables} experiments done")
 
 if __name__ == "__main__":
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
