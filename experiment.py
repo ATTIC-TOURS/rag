@@ -166,43 +166,67 @@ def run_all_experiments(openai_api_key):
     Run a grid of experiments with different parameter settings.
     """
     # Search space
-    similarity_top_k_values = [3]
-    alpha_values = [0.8]
-    rerank_options = ["cross-encoder/ms-marco-MiniLM-L-2-v2"]
-    prompt_templates = [
-        PromptTemplate(
-            "You are a helpful assistant that answers Japan visa questions.\n\n"
-            "Question: {query_str}\n\n"
-            "Here are the retrieved documents:\n{context_str}\n\n"
-            "Answer clearly and concisely."
-        ),
+    index_names = [
+        "normal_hf",
+        "normal_openai",
+        "normal_w_context_hf",
+        "normal_w_context_openai",
+        "custom_hf",
+        "custom_openai",
+        "custom_w_context_hf",
+        "custom_w_context_openai",
     ]
+    embeddings_model_names = {
+        "normal_hf": "intfloat/multilingual-e5-base",
+        "normal_w_context_hf": "intfloat/multilingual-e5-base",
+        "custom_hf": "intfloat/multilingual-e5-base",
+        "custom_w_context_hf": "intfloat/multilingual-e5-base",
+        "normal_openai": "text-embedding-3-small",
+        "normal_w_context_openai": "text-embedding-3-small",
+        "custom_openai": "text-embedding-3-small",
+        "custom_w_context_openai": "text-embedding-3-small",
+    }
+    alpha_values = [0.8, 1.0] # hybrid search or not
+    similarity_top_k_values = [3, 5, 10, 15]
+    rerank_options = [None, "cross-encoder/ms-marco-MiniLM-L-2-v2"] # has reranker or none
 
     num_variables = count_experiment_variables(
-        [similarity_top_k_values, alpha_values, rerank_options, prompt_templates]
+        [
+            index_names,
+            alpha_values,
+            similarity_top_k_values,
+            rerank_options,
+        ]
     )
 
     print(Fore.GREEN + f"Total Experiment: {num_variables}")
 
     current_ongoing_experiment = 1
-    for top_k in similarity_top_k_values:
+    for index_name in index_names:
         for alpha in alpha_values:
-            for reranker in rerank_options:
-                for prompt_template in prompt_templates:
+            for top_k in similarity_top_k_values:
+                for reranker in rerank_options:
+
                     current_vars = {
-                        "similarity_top_k": top_k,
+                        "index_name": index_name,
+                        "embeddings_model_name": embeddings_model_names[index_name],
                         "alpha": alpha,
+                        "similarity_top_k": top_k,
                         "cross_encoder_model": reranker,
-                        "prompt_template": prompt_template,
                     }
+                    
                     params = {
                         **current_vars,
-                        "index_name": "Requirements",
-                        "embeddings_model_name": "intfloat/multilingual-e5-base",
-                        "llm_model_name": "gemma3:1b",
-                        "rerank_top_n": 1 if reranker else None,
-                        "llm_provider": "ollama",
+                        "llm_model_name": "gemma3:1b",  # gemma3:1b or gpt-4o-mini
+                        "rerank_top_n": 3 if reranker else None,
+                        "llm_provider": "ollama",  # ollama or openai
                         "openai_api_key": openai_api_key,
+                        "prompt_template": PromptTemplate(
+                            "You are a helpful assistant that answers Japan visa questions.\n\n"
+                            "Question: {query_str}\n\n"
+                            "Here are the retrieved documents:\n{context_str}\n\n"
+                            "Answer clearly and concisely."
+                        ),
                     }
 
                     try:
