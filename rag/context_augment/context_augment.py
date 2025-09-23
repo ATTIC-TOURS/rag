@@ -3,9 +3,9 @@ from .context_embedder import ContextEmbedderLLM
 
 
 class ContextAugmentNodeProcessor:
-    def __init__(self, whole_text: str, model_name: str):
+    def __init__(self, whole_text: str, context_embedder: ContextEmbedderLLM | None):
         self.whole_text = whole_text
-        self.context_embedder = ContextEmbedderLLM(model_name=model_name)
+        self.context_embedder = context_embedder
 
     def process_node(self, node: TextNode) -> TextNode:
         # Store the local chunk in metadata

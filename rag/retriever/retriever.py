@@ -8,6 +8,9 @@ from llama_index.core import VectorStoreIndex, StorageContext
 import weaviate
 from sentence_transformers import CrossEncoder
 import time
+import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 connection_config = {"port": 8080, "grpc_port": 50051, "skip_init_checks": True}

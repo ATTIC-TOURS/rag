@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Request, Response, Body
 from typing import Annotated
 from ..models.messenger import Message
-from ..rag_pipeline.rag_pipeline import RagPipeline
+from ..rag.rag_pipeline import RagPipeline
 from dotenv import load_dotenv
 import os
 import requests

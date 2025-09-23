@@ -2,9 +2,9 @@ import ollama
 
 
 class ContextEmbedderLLM:
-
     def __init__(self, model_name: str):
         self.model_name = model_name
+        self.client = ollama.Client()  # persistent client
 
     def embed_context(self, whole_doc: str, chunk_content: str) -> str:
         prompt = (
@@ -19,7 +19,7 @@ class ContextEmbedderLLM:
             "Answer only with the succinct context and nothing else. "
         )
 
-        response = ollama.generate(
+        response = self.client.generate(
             model=self.model_name,
             prompt=prompt,
             options={"temperature": 0.0},

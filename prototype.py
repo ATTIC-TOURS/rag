@@ -1,6 +1,6 @@
 import gradio as gr
-from rag_pipeline.rag_pipeline import RagPipeline
-from rag_pipeline.classifier.japan_visa_related_or_not.modules import (
+from rag.rag_pipeline import RagPipeline
+from rag.classifier.japan_visa_related_or_not.modules import (
     MyTextCleaner,
     MyEmbeddingTransformer,
 )

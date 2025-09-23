@@ -18,7 +18,8 @@ from ragas import EvaluationDataset
 
 from langchain_community.chat_models import ChatOllama
 
-from rag_pipeline.rag_pipeline import build_rag_pipeline
+from rag.rag_pipeline import build_rag_pipeline
+from rag.indexing.modules import set_global_embeddings
 from llama_index.core.prompts import PromptTemplate
 from dotenv import load_dotenv
 
@@ -111,8 +112,8 @@ def run_experiment(params):
 
     dataset = EvaluationDataset.from_list(results)
 
-    # llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
-    llm = ChatOllama(model="gemma3:1b", temperature=0.0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+    # llm = ChatOllama(model="gemma3:1b", temperature=0.0)
     evaluator_llm = LangchainLLMWrapper(llm)
 
     run_config = RunConfig(timeout=7200)
@@ -142,8 +143,6 @@ def run_experiment(params):
 def log_results(params, metrics):
     record = {**params, **metrics}
 
-    del record["openai_api_key"]
-
     if os.path.exists(RESULTS_FILE):
         df = pd.read_csv(RESULTS_FILE)
         df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
@@ -161,34 +160,49 @@ def count_experiment_variables(vars):
     return count
 
 
-def run_all_experiments(openai_api_key):
+def run_all_experiments():
     """
     Run a grid of experiments with different parameter settings.
     """
     # Search space
     index_names = [
-        "normal_hf",
-        "normal_openai",
-        "normal_w_context_hf",
-        "normal_w_context_openai",
-        "custom_hf",
-        "custom_openai",
-        "custom_w_context_hf",
-        "custom_w_context_openai",
+        "Normal_splitter_hf",
+        "Normal_splitter_openai",
+        "Normal_splitter_w_context_hf",
+        "Normal_splitter_w_context_openai",
+        "Custom_splitter_hf",
+        "Custom_splitter_openai",
+        "Custom_splitter_w_context_hf",
+        "Custom_splitter_w_context_openai",
     ]
-    embeddings_model_names = {
-        "normal_hf": "intfloat/multilingual-e5-base",
-        "normal_w_context_hf": "intfloat/multilingual-e5-base",
-        "custom_hf": "intfloat/multilingual-e5-base",
-        "custom_w_context_hf": "intfloat/multilingual-e5-base",
-        "normal_openai": "text-embedding-3-small",
-        "normal_w_context_openai": "text-embedding-3-small",
-        "custom_openai": "text-embedding-3-small",
-        "custom_w_context_openai": "text-embedding-3-small",
+    embeddings_settings = {
+        "Normal_splitter_hf": {"model_name": "intfloat/multilingual-e5-base", "provider": "hf"},
+        "Normal_splitter_w_context_hf": {
+            "model_name": "intfloat/multilingual-e5-base",
+            "provider": "hf",
+        },
+        "Custom_splitter_hf": {"model_name": "intfloat/multilingual-e5-base", "provider": "hf"},
+        "Custom_splitter_w_context_hf": {
+            "model_name": "intfloat/multilingual-e5-base",
+            "provider": "hf",
+        },
+        "Normal_splitter_openai": {"model_name": "text-embedding-3-small", "provider": "openai"},
+        "Normal_splitter_w_context_openai": {
+            "model_name": "text-embedding-3-small",
+            "provider": "openai",
+        },
+        "Custom_splitter_openai": {"model_name": "text-embedding-3-small", "provider": "openai"},
+        "Custom_splitter_w_context_openai": {
+            "model_name": "text-embedding-3-small",
+            "provider": "openai",
+        },
     }
-    alpha_values = [0.8, 1.0] # hybrid search or not
+    alpha_values = [0.8, 1.0]  # hybrid search or not
     similarity_top_k_values = [3, 5, 10, 15]
-    rerank_options = [None, "cross-encoder/ms-marco-MiniLM-L-2-v2"] # has reranker or none
+    rerank_options = [
+        None,
+        "cross-encoder/ms-marco-MiniLM-L-2-v2",
+    ]  # has reranker or none
 
     num_variables = count_experiment_variables(
         [
@@ -201,33 +215,32 @@ def run_all_experiments(openai_api_key):
 
     print(Fore.GREEN + f"Total Experiment: {num_variables}")
 
+    fixed_params = {
+        "llm_model_name": "gpt-4o-mini",
+        "rerank_top_n": 3,
+        "llm_provider": "openai",
+        "prompt_template": PromptTemplate(
+            "You are a helpful assistant that answers Japan visa questions.\n\n"
+            "Question: {query_str}\n\n"
+            "Here are the retrieved documents:\n{context_str}\n\n"
+            "Answer clearly and concisely."
+        ),
+    }
+
     current_ongoing_experiment = 1
     for index_name in index_names:
         for alpha in alpha_values:
             for top_k in similarity_top_k_values:
                 for reranker in rerank_options:
-
+                    set_global_embeddings(**embeddings_settings[index_name]) # type: ignore
                     current_vars = {
                         "index_name": index_name,
-                        "embeddings_model_name": embeddings_model_names[index_name],
                         "alpha": alpha,
                         "similarity_top_k": top_k,
                         "cross_encoder_model": reranker,
                     }
-                    
-                    params = {
-                        **current_vars,
-                        "llm_model_name": "gemma3:1b",  # gemma3:1b or gpt-4o-mini
-                        "rerank_top_n": 3 if reranker else None,
-                        "llm_provider": "ollama",  # ollama or openai
-                        "openai_api_key": openai_api_key,
-                        "prompt_template": PromptTemplate(
-                            "You are a helpful assistant that answers Japan visa questions.\n\n"
-                            "Question: {query_str}\n\n"
-                            "Here are the retrieved documents:\n{context_str}\n\n"
-                            "Answer clearly and concisely."
-                        ),
-                    }
+            
+                    params = current_vars | fixed_params
 
                     try:
                         print(
@@ -236,14 +249,14 @@ def run_all_experiments(openai_api_key):
                         )
                         metrics = run_experiment(params)
                         log_results(params, metrics)
+                        current_ongoing_experiment += 1
                     except Exception as e:
                         print(f"❌ Failed experiment {params}: {e}")
 
     print(
-        Fore.GREEN + f"✅ {current_ongoing_experiment}/{num_variables} experiments done"
+        Fore.GREEN + f"✅ {current_ongoing_experiment-1}/{num_variables} experiments done"
     )
 
 
 if __name__ == "__main__":
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    run_all_experiments(OPENAI_API_KEY)
+    run_all_experiments()
