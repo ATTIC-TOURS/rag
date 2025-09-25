@@ -176,22 +176,34 @@ def run_all_experiments():
         "Custom_splitter_w_context_openai",
     ]
     embeddings_settings = {
-        "Normal_splitter_hf": {"model_name": "intfloat/multilingual-e5-base", "provider": "hf"},
+        "Normal_splitter_hf": {
+            "model_name": "intfloat/multilingual-e5-base",
+            "provider": "hf",
+        },
         "Normal_splitter_w_context_hf": {
             "model_name": "intfloat/multilingual-e5-base",
             "provider": "hf",
         },
-        "Custom_splitter_hf": {"model_name": "intfloat/multilingual-e5-base", "provider": "hf"},
+        "Custom_splitter_hf": {
+            "model_name": "intfloat/multilingual-e5-base",
+            "provider": "hf",
+        },
         "Custom_splitter_w_context_hf": {
             "model_name": "intfloat/multilingual-e5-base",
             "provider": "hf",
         },
-        "Normal_splitter_openai": {"model_name": "text-embedding-3-small", "provider": "openai"},
+        "Normal_splitter_openai": {
+            "model_name": "text-embedding-3-small",
+            "provider": "openai",
+        },
         "Normal_splitter_w_context_openai": {
             "model_name": "text-embedding-3-small",
             "provider": "openai",
         },
-        "Custom_splitter_openai": {"model_name": "text-embedding-3-small", "provider": "openai"},
+        "Custom_splitter_openai": {
+            "model_name": "text-embedding-3-small",
+            "provider": "openai",
+        },
         "Custom_splitter_w_context_openai": {
             "model_name": "text-embedding-3-small",
             "provider": "openai",
@@ -204,16 +216,139 @@ def run_all_experiments():
         "cross-encoder/ms-marco-MiniLM-L-2-v2",
     ]  # has reranker or none
 
-    num_variables = count_experiment_variables(
-        [
-            index_names,
-            alpha_values,
-            similarity_top_k_values,
-            rerank_options,
-        ]
-    )
+    # num_variables = count_experiment_variables(
+    #     [
+    #         index_names,
+    #         alpha_values,
+    #         similarity_top_k_values,
+    #         rerank_options,
+    #     ]
+    # )
+    missing_vars = [
+        {
+            "index_name": "Custom_splitter_wfxc bckll//_ n nmb jhjjjjhhhhjjhhhj   xaqęh nvf",
+            "alpha": 1.0,
+            "similarity_top_k": 10,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_hf",
+            "alpha": 1.0,
+            "similarity_top_k": 10,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_hf",
+            "alpha": 1.0,
+            "similarity_top_k": 15,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_hf",
+            "alpha": 1.0,
+            "similarity_top_k": 15,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 3,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 3,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 5,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 5,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 10,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 10,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 15,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 0.8,
+            "similarity_top_k": 15,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 3,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 3,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 5,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 5,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 10,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 10,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 15,
+            "cross_encoder_model": None,
+        },
+        {
+            "index_name": "Custom_splitter_w_context_openai",
+            "alpha": 1.0,
+            "similarity_top_k": 15,
+            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+        },
+    ]
 
-    print(Fore.GREEN + f"Total Experiment: {num_variables}")
+    len_missing_vars = len(missing_vars)
+    print(Fore.GREEN + f"Total Experiment: {len_missing_vars}")
 
     fixed_params = {
         "llm_model_name": "gpt-4o-mini",
@@ -228,34 +363,55 @@ def run_all_experiments():
     }
 
     current_ongoing_experiment = 1
-    for index_name in index_names:
-        for alpha in alpha_values:
-            for top_k in similarity_top_k_values:
-                for reranker in rerank_options:
-                    set_global_embeddings(**embeddings_settings[index_name]) # type: ignore
-                    current_vars = {
-                        "index_name": index_name,
-                        "alpha": alpha,
-                        "similarity_top_k": top_k,
-                        "cross_encoder_model": reranker,
-                    }
-            
-                    params = current_vars | fixed_params
-
-                    try:
-                        print(
-                            Fore.GREEN
-                            + f"🟢 {current_ongoing_experiment}/{num_variables} running experiment on: {current_vars}"
-                        )
-                        metrics = run_experiment(params)
-                        log_results(params, metrics)
-                        current_ongoing_experiment += 1
-                    except Exception as e:
-                        print(f"❌ Failed experiment {params}: {e}")
+    for missing_var in missing_vars:
+        set_global_embeddings(**embeddings_settings[missing_var["index_name"]])  # type: ignore
+        params = missing_var | fixed_params
+        try:
+            print(
+                Fore.GREEN
+                + f"🟢 {current_ongoing_experiment}/{len_missing_vars} running experiment on: {missing_var}"
+            )
+            metrics = run_experiment(params)
+            log_results(params, metrics)
+            current_ongoing_experiment += 1
+        except Exception as e:
+            print(f"❌ Failed experiment {params}: {e}")
 
     print(
-        Fore.GREEN + f"✅ {current_ongoing_experiment-1}/{num_variables} experiments done"
+        Fore.GREEN
+        + f"✅ {current_ongoing_experiment-1}/{len_missing_vars} experiments done"
     )
+
+    # current_ongoing_experiment = 1
+    # for index_name in index_names:
+    #     for alpha in alpha_values:
+    #         for top_k in similarity_top_k_values:
+    #             for reranker in rerank_options:
+    #                 set_global_embeddings(**embeddings_settings[index_name])  # type: ignore
+    #                 current_vars = {
+    #                     "index_name": index_name,
+    #                     "alpha": alpha,
+    #                     "similarity_top_k": top_k,
+    #                     "cross_encoder_model": reranker,
+    #                 }
+
+    #                 params = current_vars | fixed_params
+
+    #                 try:
+    #                     print(
+    #                         Fore.GREEN
+    #                         + f"🟢 {current_ongoing_experiment}/{num_variables} running experiment on: {current_vars}"
+    #                     )
+    #                     metrics = run_experiment(params)
+    #                     log_results(params, metrics)
+    #                     current_ongoing_experiment += 1
+    #                 except Exception as e:
+    #                     print(f"❌ Failed experiment {params}: {e}")
+
+    # print(
+    #     Fore.GREEN
+    #     + f"✅ {current_ongoing_experiment-1}/{num_variables} experiments done"
+    # )
 
 
 if __name__ == "__main__":

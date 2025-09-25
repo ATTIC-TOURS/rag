@@ -1,0 +1,129 @@
+index_name,alpha,similarity_top_k,cross_encoder_model,count
+Custom_splitter_hf,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,0.8,3,no reranker,1
+Custom_splitter_hf,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,0.8,5,no reranker,1
+Custom_splitter_hf,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,0.8,10,no reranker,1
+Custom_splitter_hf,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,0.8,15,no reranker,1
+Custom_splitter_hf,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,1.0,3,no reranker,1
+Custom_splitter_hf,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,1.0,5,no reranker,1
+Custom_splitter_hf,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,1.0,10,no reranker,1
+Custom_splitter_hf,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_hf,1.0,15,no reranker,1
+Custom_splitter_openai,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,0.8,3,no reranker,1
+Custom_splitter_openai,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,0.8,5,no reranker,1
+Custom_splitter_openai,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,0.8,10,no reranker,1
+Custom_splitter_openai,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,0.8,15,no reranker,1
+Custom_splitter_openai,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,1.0,3,no reranker,1
+Custom_splitter_openai,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,1.0,5,no reranker,1
+Custom_splitter_openai,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,1.0,10,no reranker,1
+Custom_splitter_openai,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_openai,1.0,15,no reranker,1
+Custom_splitter_w_context_hf,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_hf,1.0,10,no reranker,2
+Custom_splitter_w_context_hf,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_hf,1.0,15,no reranker,2
+Custom_splitter_w_context_hf,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_w_context_hf,0.8,3,no reranker,1
+Custom_splitter_w_context_hf,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_w_context_hf,0.8,5,no reranker,1
+Custom_splitter_w_context_hf,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_w_context_hf,0.8,10,no reranker,1
+Custom_splitter_w_context_hf,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_w_context_hf,0.8,15,no reranker,1
+Custom_splitter_w_context_hf,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_w_context_hf,1.0,3,no reranker,1
+Custom_splitter_w_context_hf,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Custom_splitter_w_context_hf,1.0,5,no reranker,1
+Custom_splitter_w_context_openai,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,0.8,3,no reranker,2
+Custom_splitter_w_context_openai,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,0.8,5,no reranker,2
+Custom_splitter_w_context_openai,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,0.8,10,no reranker,2
+Custom_splitter_w_context_openai,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,0.8,15,no reranker,2
+Custom_splitter_w_context_openai,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,1.0,3,no reranker,2
+Custom_splitter_w_context_openai,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,1.0,5,no reranker,2
+Custom_splitter_w_context_openai,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,1.0,10,no reranker,2
+Custom_splitter_w_context_openai,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,2
+Custom_splitter_w_context_openai,1.0,15,no reranker,2
+Normal_splitter_hf,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,0.8,3,no reranker,1
+Normal_splitter_hf,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,0.8,5,no reranker,1
+Normal_splitter_hf,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,0.8,10,no reranker,1
+Normal_splitter_hf,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,0.8,15,no reranker,1
+Normal_splitter_hf,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,1.0,3,no reranker,1
+Normal_splitter_hf,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,1.0,5,no reranker,1
+Normal_splitter_hf,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,1.0,10,no reranker,1
+Normal_splitter_hf,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_hf,1.0,15,no reranker,1
+Normal_splitter_openai,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,0.8,3,no reranker,1
+Normal_splitter_openai,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,0.8,5,no reranker,1
+Normal_splitter_openai,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,0.8,10,no reranker,1
+Normal_splitter_openai,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,0.8,15,no reranker,1
+Normal_splitter_openai,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,1.0,3,no reranker,1
+Normal_splitter_openai,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,1.0,5,no reranker,1
+Normal_splitter_openai,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,1.0,10,no reranker,1
+Normal_splitter_openai,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_openai,1.0,15,no reranker,1
+Normal_splitter_w_context_hf,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,0.8,3,no reranker,1
+Normal_splitter_w_context_hf,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,0.8,5,no reranker,1
+Normal_splitter_w_context_hf,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,0.8,10,no reranker,1
+Normal_splitter_w_context_hf,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,0.8,15,no reranker,1
+Normal_splitter_w_context_hf,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,1.0,3,no reranker,1
+Normal_splitter_w_context_hf,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,1.0,5,no reranker,1
+Normal_splitter_w_context_hf,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,1.0,10,no reranker,1
+Normal_splitter_w_context_hf,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_hf,1.0,15,no reranker,1
+Normal_splitter_w_context_openai,0.8,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,0.8,3,no reranker,1
+Normal_splitter_w_context_openai,0.8,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,0.8,5,no reranker,1
+Normal_splitter_w_context_openai,0.8,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,0.8,10,no reranker,1
+Normal_splitter_w_context_openai,0.8,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,0.8,15,no reranker,1
+Normal_splitter_w_context_openai,1.0,3,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,1.0,3,no reranker,1
+Normal_splitter_w_context_openai,1.0,5,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,1.0,5,no reranker,1
+Normal_splitter_w_context_openai,1.0,10,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,1.0,10,no reranker,1
+Normal_splitter_w_context_openai,1.0,15,cross-encoder/ms-marco-MiniLM-L-2-v2,1
+Normal_splitter_w_context_openai,1.0,15,no reranker,1
