@@ -1,8 +1,12 @@
 import os
-
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import time
+import asyncio
 import pandas as pd
+import warnings
+from dotenv import load_dotenv
+from colorama import init, Fore
 
 from langchain_openai import ChatOpenAI
 from ragas.llms import LangchainLLMWrapper
@@ -18,51 +22,31 @@ from ragas import EvaluationDataset
 
 from langchain_community.chat_models import ChatOllama
 
-from rag.rag_pipeline import build_rag_pipeline
+from rag.rag_pipeline import build_two_stage_rag_pipeline
 from rag.indexing.modules import set_global_embeddings
 from llama_index.core.prompts import PromptTemplate
-from dotenv import load_dotenv
 
+# === setup ===
 load_dotenv()
-from colorama import init, Fore
-
 init(autoreset=True)
-import warnings
-
 warnings.filterwarnings("ignore", category=ResourceWarning)
 
 RESULTS_FILE = "rag_experiment_results.csv"
 
 
+# === data loading ===
 def extract_queries() -> pd.DataFrame:
     url_source: str = (
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1hUlRhTJQgNzSbTyRtDNh1mCrbfy0iUm6oiHK7oHb_iQQ5t7XCB_xyUCwoZ2fdg/pub?output=xlsx"
     )
-    # Load only the `queries` sheet
     queries = pd.read_excel(url_source, sheet_name="queries")
     return queries
 
 
 def transform_queries(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and keep only relevant columns:
-    - query_id
-    - query (renamed to 'user_input')
-    - answer (renamed to 'reference')
-    - optional: filter rows based on `check` column
-    """
     df = df.copy()
-
-    # Rename columns to match RAGAS expected format
     df = df.rename(columns={"query": "user_input", "answer": "reference"})
-
-    # Drop rows with missing data
     df = df.dropna(subset=["user_input", "reference"])
-
-    # Optional: filter only rows where check == 1 (if you use that column for QA validation)
-    # if "check" in df.columns:
-    #     df = df[df["check"] == 1]
-
     return df[["query_id", "user_input", "reference"]]
 
 
@@ -75,40 +59,48 @@ def load_queries() -> pd.DataFrame:
 
 
 EVAL_DF = load_queries()
-
-# Convert DataFrame to list of dicts for iteration
 EVAL_QUERIES = EVAL_DF.to_dict(orient="records")
 
 
-def run_experiment(params):
+# === experiment ===
+async def run_experiment(params):
     """
     Run one experiment with given params, return averaged metrics + latency.
     """
-
-    query_engine, client = build_rag_pipeline(**params)
+    query_engine, client = await build_two_stage_rag_pipeline(**params)
 
     results = []
     latencies = []
 
-    # Generate response for each query
     len_eval_queries = len(EVAL_QUERIES)
     for idx, q in enumerate(EVAL_QUERIES):
         print(Fore.BLUE + f"{idx+1}/{len_eval_queries} 🤖 generating response..")
         start = time.time()
-        response = query_engine.query(q["user_input"])
+
+        response = await query_engine.query(q["user_input"])
         elapsed = time.time() - start
         latencies.append(elapsed)
+
+        # Normalize response (string vs Response object)
+
+        if isinstance(response, dict):  # new two-stage dict
+            facts = response["facts"]
+            final_answer = response["final_answer"]
+            retrieved_contexts = [n.get_content() for n in facts.source_nodes]
+        else:  # fallback (string)
+            final_answer = str(response)
+            retrieved_contexts = []
 
         results.append(
             {
                 "user_input": q["user_input"],
-                "response": str(response),
-                "retrieved_contexts": [n.get_content() for n in response.source_nodes],
+                "response": final_answer,
+                "retrieved_contexts": retrieved_contexts,
                 "reference": q["reference"],
             }
         )
 
-    client.close()
+    await client.close()
 
     dataset = EvaluationDataset.from_list(results)
 
@@ -122,7 +114,9 @@ def run_experiment(params):
         dataset=dataset,
         metrics=[
             Faithfulness(),
-            FactualCorrectness(),
+            FactualCorrectness(atomicity="low", coverage="low"),
+            FactualCorrectness(mode="precision", atomicity="low", coverage="low"),
+            FactualCorrectness(mode="recall", atomicity="low", coverage="low"),
             LLMContextPrecisionWithReference(),
             LLMContextRecall(),
         ],
@@ -130,8 +124,7 @@ def run_experiment(params):
         run_config=run_config,
     )
 
-    # for retriever and generator
-    avg_metrics = eval_results.to_pandas().describe().loc["mean"].to_dict()  # type: ignore
+    avg_metrics = eval_results.to_pandas().describe().loc["mean"].to_dict()
 
     # latency
     avg_metrics["avg_latency_sec"] = sum(latencies) / len(latencies)
@@ -140,12 +133,15 @@ def run_experiment(params):
     return avg_metrics
 
 
+# === logging ===
 def log_results(params, metrics):
     record = {**params, **metrics}
 
     if os.path.exists(RESULTS_FILE):
         df = pd.read_csv(RESULTS_FILE)
-        df = pd.concat([df, pd.DataFrame([record])], ignore_index=True)
+        new_df = pd.DataFrame([record])
+        new_df["#Experiment"] = 8
+        df = pd.concat([df, new_df], ignore_index=True)
     else:
         df = pd.DataFrame([record])
 
@@ -153,225 +149,55 @@ def log_results(params, metrics):
     print(Fore.BLUE + f"📝 Logged Experiment")
 
 
-def count_experiment_variables(vars):
-    count = 1
-    for var in vars:
-        count *= len(var)
-    return count
-
-
-def run_all_experiments():
-    """
-    Run a grid of experiments with different parameter settings.
-    """
-    # Search space
-    index_names = [
-        "Normal_splitter_hf",
-        "Normal_splitter_openai",
-        "Normal_splitter_w_context_hf",
-        "Normal_splitter_w_context_openai",
-        "Custom_splitter_hf",
-        "Custom_splitter_openai",
-        "Custom_splitter_w_context_hf",
-        "Custom_splitter_w_context_openai",
-    ]
+# === run all ===
+async def run_all_experiments():
     embeddings_settings = {
-        "Normal_splitter_hf": {
-            "model_name": "intfloat/multilingual-e5-base",
-            "provider": "hf",
-        },
-        "Normal_splitter_w_context_hf": {
-            "model_name": "intfloat/multilingual-e5-base",
-            "provider": "hf",
-        },
-        "Custom_splitter_hf": {
-            "model_name": "intfloat/multilingual-e5-base",
-            "provider": "hf",
-        },
         "Custom_splitter_w_context_hf": {
             "model_name": "intfloat/multilingual-e5-base",
             "provider": "hf",
         },
-        "Normal_splitter_openai": {
-            "model_name": "text-embedding-3-small",
-            "provider": "openai",
-        },
-        "Normal_splitter_w_context_openai": {
-            "model_name": "text-embedding-3-small",
-            "provider": "openai",
-        },
-        "Custom_splitter_openai": {
-            "model_name": "text-embedding-3-small",
-            "provider": "openai",
-        },
-        "Custom_splitter_w_context_openai": {
-            "model_name": "text-embedding-3-small",
-            "provider": "openai",
-        },
     }
-    alpha_values = [0.8, 1.0]  # hybrid search or not
-    similarity_top_k_values = [3, 5, 10, 15]
-    rerank_options = [
-        None,
-        "cross-encoder/ms-marco-MiniLM-L-2-v2",
-    ]  # has reranker or none
 
-    # num_variables = count_experiment_variables(
-    #     [
-    #         index_names,
-    #         alpha_values,
-    #         similarity_top_k_values,
-    #         rerank_options,
-    #     ]
-    # )
-    missing_vars = [
-        {
-            "index_name": "Custom_splitter_wfxc bckll//_ n nmb jhjjjjhhhhjjhhhj   xaqęh nvf",
-            "alpha": 1.0,
-            "similarity_top_k": 10,
-            "cross_encoder_model": None,
-        },
+    experiment_vars = [
         {
             "index_name": "Custom_splitter_w_context_hf",
-            "alpha": 1.0,
-            "similarity_top_k": 10,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_hf",
-            "alpha": 1.0,
-            "similarity_top_k": 15,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_hf",
-            "alpha": 1.0,
-            "similarity_top_k": 15,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 3,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 3,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 5,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 5,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 10,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
             "alpha": 0.8,
             "similarity_top_k": 10,
             "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 15,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 0.8,
-            "similarity_top_k": 15,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 3,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 3,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 5,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 5,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 10,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 10,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 15,
-            "cross_encoder_model": None,
-        },
-        {
-            "index_name": "Custom_splitter_w_context_openai",
-            "alpha": 1.0,
-            "similarity_top_k": 15,
-            "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
+            "rerank_top_n": 3,
+            "fact_prompt": PromptTemplate(
+                "Extract only factual statements from the documents below.\n"
+                "Write each fact as a short, atomic bullet point.\n"
+                "Do not add or guess anything.\n\n"
+                "Question: {query_str}\n"
+                "Documents:\n"
+                "{context_str}\n\n"
+                "Answer (facts only, bullet points):"
+            ),
+            "answer_prompt": PromptTemplate(
+                "You are a helpful assistant for Japan visa questions.\n"
+                "Use ONLY the provided facts below to answer clearly and concisely.\n"
+                "If multiple conditions exist, explain them separately.\n"
+                "Do not invent or add information.\n\n"
+                "Facts:\n"
+                "{context_str}\n\n"
+            ),
         },
     ]
 
-    len_missing_vars = len(missing_vars)
-    print(Fore.GREEN + f"Total Experiment: {len_missing_vars}")
-
-    fixed_params = {
-        "llm_model_name": "gpt-4o-mini",
-        "rerank_top_n": 3,
-        "llm_provider": "openai",
-        "prompt_template": PromptTemplate(
-            "You are a helpful assistant that answers Japan visa questions.\n\n"
-            "Question: {query_str}\n\n"
-            "Here are the retrieved documents:\n{context_str}\n\n"
-            "Answer clearly and concisely."
-        ),
-    }
+    len_experiment_vars = len(experiment_vars)
+    print(Fore.GREEN + f"Total Experiment: {len_experiment_vars}")
 
     current_ongoing_experiment = 1
-    for missing_var in missing_vars:
-        set_global_embeddings(**embeddings_settings[missing_var["index_name"]])  # type: ignore
-        params = missing_var | fixed_params
+    for experiment_var in experiment_vars:
+        set_global_embeddings(**embeddings_settings[experiment_var["index_name"]])  # type: ignore
+        params = experiment_var
         try:
             print(
                 Fore.GREEN
-                + f"🟢 {current_ongoing_experiment}/{len_missing_vars} running experiment on: {missing_var}"
+                + f"🟢 {current_ongoing_experiment}/{len_experiment_vars} running experiment on: {experiment_var}"
             )
-            metrics = run_experiment(params)
+            metrics = await run_experiment(params)
             log_results(params, metrics)
             current_ongoing_experiment += 1
         except Exception as e:
@@ -379,40 +205,9 @@ def run_all_experiments():
 
     print(
         Fore.GREEN
-        + f"✅ {current_ongoing_experiment-1}/{len_missing_vars} experiments done"
+        + f"✅ {current_ongoing_experiment-1}/{len_experiment_vars} experiments done"
     )
-
-    # current_ongoing_experiment = 1
-    # for index_name in index_names:
-    #     for alpha in alpha_values:
-    #         for top_k in similarity_top_k_values:
-    #             for reranker in rerank_options:
-    #                 set_global_embeddings(**embeddings_settings[index_name])  # type: ignore
-    #                 current_vars = {
-    #                     "index_name": index_name,
-    #                     "alpha": alpha,
-    #                     "similarity_top_k": top_k,
-    #                     "cross_encoder_model": reranker,
-    #                 }
-
-    #                 params = current_vars | fixed_params
-
-    #                 try:
-    #                     print(
-    #                         Fore.GREEN
-    #                         + f"🟢 {current_ongoing_experiment}/{num_variables} running experiment on: {current_vars}"
-    #                     )
-    #                     metrics = run_experiment(params)
-    #                     log_results(params, metrics)
-    #                     current_ongoing_experiment += 1
-    #                 except Exception as e:
-    #                     print(f"❌ Failed experiment {params}: {e}")
-
-    # print(
-    #     Fore.GREEN
-    #     + f"✅ {current_ongoing_experiment-1}/{num_variables} experiments done"
-    # )
 
 
 if __name__ == "__main__":
-    run_all_experiments()
+    asyncio.run(run_all_experiments())
