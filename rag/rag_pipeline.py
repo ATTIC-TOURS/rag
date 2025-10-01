@@ -1,95 +1,152 @@
-from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from llama_index.core import StorageContext, VectorStoreIndex
-from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.prompts import PromptTemplate
 from llama_index.llms.openai import OpenAI
-import weaviate
-import asyncio
+import weaviate, hashlib
 
 connection_config = {"port": 8080, "grpc_port": 50051, "skip_init_checks": True}
 
 
-async def build_two_stage_rag_pipeline(
+# --- Query expansion helper ---
+async def expand_query(query: str, num_expansions: int = 3) -> list[str]:
+    llm = OpenAI(model="gpt-5-mini", request_timeout=60)
+    prompt = (
+        f"Generate {num_expansions} alternative queries that mean the same as:\n"
+        f"'{query}'\n"
+        "Return each variation as a short standalone query."
+    )
+    response = await llm.acomplete(prompt)
+    expansions = [q.strip("-• \n") for q in response.text.split("\n") if q.strip()]
+    return [query] + expansions  # include original
+
+
+# --- Deduplication helper ---
+def deduplicate_nodes(nodes):
+    seen = set()
+    unique_nodes = []
+    for node in nodes:
+        node_hash = (
+            getattr(node, "node_id", None)
+            or hashlib.md5(node.text.encode("utf-8")).hexdigest()
+        )
+        if node_hash not in seen:
+            seen.add(node_hash)
+            unique_nodes.append(node)
+    return unique_nodes
+
+
+# --- Build pipeline ---
+async def build_rag_pipeline(
     index_name: str,
-    similarity_top_k: int,
     alpha: float,
     cross_encoder_model: str | None = None,
-    rerank_top_n: int = 1,
+    rerank_top_n: int = 5,  # final cut
     fact_prompt: PromptTemplate | None = None,
     answer_prompt: PromptTemplate | None = None,
+    two_stage: bool = True,
+    use_query_expansion: bool = False,
+    query_expansion_num: int = 3,
+    base_k: int = 10,  # docs for original query
+    expansion_k: int = 5,  # docs for each expansion
 ):
-    # 1. Connect to Weaviate (sync)
-    # client = weaviate.connect_to_local(**connection_config, async_client=True)
-
-    # Async client in v4
-    client = weaviate.use_async_with_local(**connection_config)
+    # 1. Connect to Weaviate
+    client = weaviate.use_async_with_local(
+        port=8080, grpc_port=50051, skip_init_checks=True
+    )
     await client.connect()
-    
+
     vector_store = WeaviateVectorStore(weaviate_client=client, index_name=index_name)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    # 2. Build index
+    # 2. Build index + retriever
     index = VectorStoreIndex([], storage_context=storage_context)
-
-    # 3. Retriever
-    retriever = index.as_retriever(
-        similarity_top_k=similarity_top_k,
-        mode="hybrid",
-        alpha=alpha,
+    base_retriever = index.as_retriever(
+        similarity_top_k=base_k, mode="hybrid", alpha=alpha
+    )
+    expansion_retriever = index.as_retriever(
+        similarity_top_k=expansion_k, mode="hybrid", alpha=alpha
     )
 
-    # 4. Optional reranker
+    # 3. Optional reranker
     reranker = None
     if cross_encoder_model:
         reranker = SentenceTransformerRerank(
-            model=cross_encoder_model,
-            top_n=rerank_top_n,
+            model=cross_encoder_model, top_n=rerank_top_n
         )
 
-    # 5. Stage 1: Fact extraction with GPT-4o-mini
-    llm_stage1 = OpenAI(model="gpt-4o-mini", request_timeout=300)
+    # 4. Synthesizers
+    llm_stage1 = OpenAI(model="gpt-5-mini", request_timeout=300)
     fact_synthesizer = get_response_synthesizer(
-        llm=llm_stage1,
-        text_qa_template=fact_prompt,
+        llm=llm_stage1, text_qa_template=fact_prompt
     )
 
-    # 6. Stage 2: Final answer formatting with GPT-5
-    llm_stage2 = OpenAI(model="gpt-5", request_timeout=300)
-    answer_synthesizer = get_response_synthesizer(
-        llm=llm_stage2,
-        text_qa_template=answer_prompt,
-    )
+    answer_synthesizer = None
+    if two_stage:
+        llm_stage2 = OpenAI(model="gpt-5", request_timeout=300)
+        answer_synthesizer = get_response_synthesizer(
+            llm=llm_stage2, text_qa_template=answer_prompt
+        )
 
-    # 7. Custom query engine
-    retriever_engine = RetrieverQueryEngine(
-        retriever=retriever,
-        node_postprocessors=[reranker] if reranker else None,
-        response_synthesizer=fact_synthesizer,
-    )
-
-    # 8. Wrap into a two-step engine
-    class TwoStageQueryEngine:
+    # --- Query Engine Wrapper ---
+    class FlexibleQueryEngine:
         async def aquery(self, query: str):
-            # Step 1: fact extraction (Response object with source_nodes)
-            fact_response = await retriever_engine.aquery(query)
+            # Step 0: query expansion
+            if use_query_expansion:
+                expanded_queries = await expand_query(query, query_expansion_num)
+            else:
+                expanded_queries = [query]
 
-            # Step 2: final formatting (string only)
-            final_response = await answer_synthesizer.asynthesize(
-                query, fact_response.source_nodes
-            )
+            # Step 1: retrieve docs per query
+            all_nodes = []
+            for i, q in enumerate(expanded_queries):
+                if i == 0:
+                    retrieved = await base_retriever.aretrieve(q)
+                else:
+                    retrieved = await expansion_retriever.aretrieve(q)
+                all_nodes.extend(retrieved)
 
-            return {
-                "facts": fact_response,  # full Response object
-                "final_answer": str(final_response),  # formatted string
-            }
+            # Step 2: deduplicate
+            unique_nodes = deduplicate_nodes(all_nodes)
+
+            # Step 3: rerank globally (if enabled)
+            if reranker:
+                unique_nodes = reranker.postprocess_nodes(
+                    query_str=query, nodes=unique_nodes
+                )
+
+            # Keep only top N
+            final_nodes = unique_nodes[:rerank_top_n]
+
+            # Step 4: fact synthesis
+            fact_response = await fact_synthesizer.asynthesize(query, final_nodes)
+
+            # Step 5: final synthesis (optional)
+            if two_stage and answer_synthesizer:
+                final_response = await answer_synthesizer.asynthesize(
+                    query, fact_response.source_nodes
+                )
+                return {
+                    "expanded_queries": expanded_queries,
+                    "retrieved_docs": len(all_nodes),
+                    "unique_docs": len(unique_nodes),
+                    "final_answer": str(final_response),
+                    "facts": fact_response,
+                }
+            else:
+                return {
+                    "expanded_queries": expanded_queries,
+                    "retrieved_docs": len(all_nodes),
+                    "unique_docs": len(unique_nodes),
+                    "final_answer": str(fact_response),
+                    "facts": fact_response,
+                }
 
         async def query(self, query: str):
             return await self.aquery(query)
 
-    return TwoStageQueryEngine(), client
+    return FlexibleQueryEngine(), client
 
 
 # def build_rag_pipeline(
@@ -98,7 +155,7 @@ async def build_two_stage_rag_pipeline(
 #     similarity_top_k: int,
 #     alpha: float,
 #     prompt_template: PromptTemplate,
-#     llm_provider: LLM_PROVIDER,
+#     llm_provider: str,
 #     cross_encoder_model: str | None = None,
 #     rerank_top_n: int = 1,
 # ):

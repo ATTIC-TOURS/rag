@@ -1,4 +1,5 @@
 import os
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import time
@@ -20,9 +21,7 @@ from ragas.metrics import (
 from ragas.run_config import RunConfig
 from ragas import EvaluationDataset
 
-from langchain_community.chat_models import ChatOllama
-
-from rag.rag_pipeline import build_two_stage_rag_pipeline
+from rag.rag_pipeline import build_rag_pipeline
 from rag.indexing.modules import set_global_embeddings
 from llama_index.core.prompts import PromptTemplate
 
@@ -67,7 +66,7 @@ async def run_experiment(params):
     """
     Run one experiment with given params, return averaged metrics + latency.
     """
-    query_engine, client = await build_two_stage_rag_pipeline(**params)
+    query_engine, client = await build_rag_pipeline(**params)
 
     results = []
     latencies = []
@@ -105,7 +104,6 @@ async def run_experiment(params):
     dataset = EvaluationDataset.from_list(results)
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
-    # llm = ChatOllama(model="gemma3:1b", temperature=0.0)
     evaluator_llm = LangchainLLMWrapper(llm)
 
     run_config = RunConfig(timeout=7200)
@@ -140,7 +138,7 @@ def log_results(params, metrics):
     if os.path.exists(RESULTS_FILE):
         df = pd.read_csv(RESULTS_FILE)
         new_df = pd.DataFrame([record])
-        new_df["#Experiment"] = 8
+        new_df["#Experiment"] = 18
         df = pd.concat([df, new_df], ignore_index=True)
     else:
         df = pd.DataFrame([record])
@@ -162,26 +160,32 @@ async def run_all_experiments():
         {
             "index_name": "Custom_splitter_w_context_hf",
             "alpha": 0.8,
-            "similarity_top_k": 10,
+            "base_k": 5,
+            "expansion_k": 5,
             "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
-            "rerank_top_n": 3,
+            "rerank_top_n": 5,
             "fact_prompt": PromptTemplate(
-                "Extract only factual statements from the documents below.\n"
-                "Write each fact as a short, atomic bullet point.\n"
-                "Do not add or guess anything.\n\n"
-                "Question: {query_str}\n"
-                "Documents:\n"
-                "{context_str}\n\n"
-                "Answer (facts only, bullet points):"
+                """You are a Japan visa assistant.
+
+Your task is to answer the user's question using ONLY the retrieved documents. 
+Follow these strict rules:
+1. Use ONLY facts explicitly stated in the retrieved documents. 
+   - If something is not mentioned, DO NOT invent, assume, or guess.
+2. When multiple documents provide overlapping or complementary information, merge them into a single clear answer without losing details.
+3. Present the answer in a structured, list-like format when appropriate (to maximize coverage of factual details).
+4. Be concise and avoid repetition, but ensure completeness of the retrieved facts.
+5. If the documents do not fully answer the question, clearly state what is missing.
+
+Question: {query_str}
+
+Retrieved documents:
+{context_str}
+
+Final Answer:"""
             ),
-            "answer_prompt": PromptTemplate(
-                "You are a helpful assistant for Japan visa questions.\n"
-                "Use ONLY the provided facts below to answer clearly and concisely.\n"
-                "If multiple conditions exist, explain them separately.\n"
-                "Do not invent or add information.\n\n"
-                "Facts:\n"
-                "{context_str}\n\n"
-            ),
+            "two_stage": False,
+            "use_query_expansion": True,
+            "query_expansion_num": 3,
         },
     ]
 

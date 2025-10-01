@@ -111,7 +111,7 @@ async def messenger_webhook(request: Request):
                     await asyncio.sleep(1.5)
                     # Automated reply
                     reply_text = f"You said: {text}"
-                    await send_message(sender_id, reply_text)
+                    # await send_message(sender_id, reply_text)
 
     return {"status": "ok"}
 
