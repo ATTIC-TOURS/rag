@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import messenger, knowledge_base
+from .api_routers import messenger, knowledge_base
 
 
 app = FastAPI(

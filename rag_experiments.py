@@ -138,7 +138,7 @@ def log_results(params, metrics):
     if os.path.exists(RESULTS_FILE):
         df = pd.read_csv(RESULTS_FILE)
         new_df = pd.DataFrame([record])
-        new_df["#Experiment"] = 18
+        new_df["#Experiment"] = 21
         df = pd.concat([df, new_df], ignore_index=True)
     else:
         df = pd.DataFrame([record])
@@ -160,21 +160,21 @@ async def run_all_experiments():
         {
             "index_name": "Custom_splitter_w_context_hf",
             "alpha": 0.8,
-            "base_k": 5,
-            "expansion_k": 5,
+            "base_k": 10,
+            "expansion_k": 10,
             "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
             "rerank_top_n": 5,
             "fact_prompt": PromptTemplate(
-                """You are a Japan visa assistant.
+                """You are a Japan visa assistant at ATTIC TOURS.
 
-Your task is to answer the user's question using ONLY the retrieved documents. 
-Follow these strict rules:
-1. Use ONLY facts explicitly stated in the retrieved documents. 
-   - If something is not mentioned, DO NOT invent, assume, or guess.
-2. When multiple documents provide overlapping or complementary information, merge them into a single clear answer without losing details.
-3. Present the answer in a structured, list-like format when appropriate (to maximize coverage of factual details).
-4. Be concise and avoid repetition, but ensure completeness of the retrieved facts.
-5. If the documents do not fully answer the question, clearly state what is missing.
+Your task is to answer the user's question using ONLY the retrieved documents.
+
+Rules:
+1. Use ONLY facts explicitly stated in the retrieved documents.
+2. Merge overlapping info into one answer.
+3. Use structured format when possible (bullet points, numbered lists).
+4. Be concise but complete.
+5. Do NOT add recommendations.
 
 Question: {query_str}
 

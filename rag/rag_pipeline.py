@@ -77,7 +77,7 @@ async def build_rag_pipeline(
         )
 
     # 4. Synthesizers
-    llm_stage1 = OpenAI(model="gpt-5-mini", request_timeout=300)
+    llm_stage1 = OpenAI(model="gpt-5-chat-latest", request_timeout=300)
     fact_synthesizer = get_response_synthesizer(
         llm=llm_stage1, text_qa_template=fact_prompt
     )
@@ -147,73 +147,3 @@ async def build_rag_pipeline(
             return await self.aquery(query)
 
     return FlexibleQueryEngine(), client
-
-
-# def build_rag_pipeline(
-#     index_name: str,
-#     llm_model_name: str,
-#     similarity_top_k: int,
-#     alpha: float,
-#     prompt_template: PromptTemplate,
-#     llm_provider: str,
-#     cross_encoder_model: str | None = None,
-#     rerank_top_n: int = 1,
-# ):
-#     """
-#     Build a RAG pipeline with:
-#       - Weaviate hybrid retriever
-#       - Optional CrossEncoder reranker
-#       - Ollama or OpenAI as generator
-#     """
-#     # 1. Connect to Weaviate
-#     client = weaviate.connect_to_local(**connection_config)
-#     vector_store = WeaviateVectorStore(weaviate_client=client, index_name=index_name)
-#     storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-#     # 2. Build index
-#     index = VectorStoreIndex([], storage_context=storage_context)
-
-#     # 3. Base retriever
-#     retriever = index.as_retriever(
-#         similarity_top_k=similarity_top_k,
-#         mode="hybrid",
-#         alpha=alpha,
-#     )
-
-#     # 4. Optional reranker
-#     reranker = None
-#     if cross_encoder_model:
-#         reranker = SentenceTransformerRerank(
-#             model=cross_encoder_model,
-#             top_n=rerank_top_n,
-#         )
-
-#     # 5. LLM provider
-#     if llm_provider == "ollama":
-#         llm = Ollama(
-#             model=llm_model_name,
-#             base_url="http://localhost:11434",
-#             request_timeout=300,
-#         )
-#     elif llm_provider == "openai":
-#         llm = OpenAI(
-#             model=llm_model_name,
-#             request_timeout=300,
-#         )
-#     else:
-#         raise ValueError(f"Unsupported llm provider: {llm_provider}")
-
-#     # 7. Response synthesizer with custom prompt
-#     response_synthesizer = get_response_synthesizer(
-#         llm=llm,
-#         text_qa_template=prompt_template,
-#     )
-
-#     # 8. Query engine
-#     query_engine = RetrieverQueryEngine(
-#         retriever=retriever,
-#         node_postprocessors=[reranker] if reranker else None,
-#         response_synthesizer=response_synthesizer,
-#     )
-
-#     return query_engine, client
