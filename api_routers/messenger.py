@@ -285,4 +285,5 @@ async def inquire(message: str) -> str:
     response = await query_engine.query(message)
     return response["final_answer"]
 
+
 init_db()
