@@ -17,10 +17,13 @@ from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from llama_index.core.schema import TextNode
 
 import weaviate
+from weaviate.classes.init import Auth
 
 import uuid
 import os
-import time
+from dotenv import load_dotenv
+
+load_dotenv()
 from typing import Literal
 from colorama import init, Fore
 
@@ -29,9 +32,19 @@ import warnings
 
 warnings.filterwarnings("ignore", category=ResourceWarning)
 
+from ..my_decorators.time import time_performance
+
+weaviate_url = os.environ["WEAVIATE_URL"]
+weaviate_api_key = os.environ["WEAVIATE_API_KEY"]
 
 # connection settings to weaviate (vector database)
-connection_config = {"port": 8080, "grpc_port": 50051, "skip_init_checks": True}
+connection_config = {
+    "local": {"port": 8080, "grpc_port": 50051, "skip_init_checks": True},
+    "cloud": {
+        "cluster_url": weaviate_url,
+        "auth_credentials": Auth.api_key(weaviate_api_key),
+    },
+}
 
 
 def retrieve_documents(directory: str):
@@ -76,7 +89,7 @@ def clean_documents(documents):
 
 Provider = Literal["hf", "openai"]
 
-
+@time_performance("set_global_embeddings")
 def set_global_embeddings(model_name: str, provider: Provider):
     if provider == "hf":
         model = SentenceTransformer(model_name)
@@ -94,15 +107,15 @@ def set_global_embeddings(model_name: str, provider: Provider):
 SplitterType = Literal["normal", "custom"]
 
 
-def split_documents(
+def ingest_documents(
     documents: list[Document],
     splitter_type: SplitterType,
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
     chunk_overlap_rate: float = 0.2,
     max_tokens: int = 500,
-    add_context: bool = False,
-    context_augment_model_name: str = "",
+    has_embed_context: bool = False,
+    context_augment_model_name: str = "gpt-5-mini",
 ) -> list[TextNode]:
 
     if splitter_type == "normal":
@@ -117,7 +130,7 @@ def split_documents(
         )
 
     context_embedder = None
-    if add_context:
+    if has_embed_context:
         context_embedder = ContextEmbedderLLM(model_name=context_augment_model_name)
 
     nodes: list[TextNode] = []
@@ -129,7 +142,7 @@ def split_documents(
         )
         chunks = splitter.split_text(doc.text)
 
-        if add_context:
+        if has_embed_context:
             print(
                 Fore.CYAN
                 + f'adding context to chunks of {doc.extra_info["source_path"]}'
@@ -146,10 +159,13 @@ def split_documents(
     return nodes
 
 
-def store_nodes(nodes: list[TextNode], index_name: str):
+def index(nodes: list[TextNode], index_name: str, is_cloud_storage=False):
     client = None
     try:
-        client = weaviate.connect_to_local(**connection_config)
+        if is_cloud_storage:
+            client = weaviate.connect_to_weaviate_cloud(**connection_config["cloud"])
+        else:
+            client = weaviate.connect_to_local(**connection_config["local"])
         vector_store = WeaviateVectorStore(
             weaviate_client=client, index_name=index_name
         )
@@ -165,11 +181,14 @@ def store_nodes(nodes: list[TextNode], index_name: str):
             client.close()
 
 
-def remove_index(index_name: str):
+def remove_index(index_name: str, is_cloud_storage: bool = False):
     print(Fore.GREEN + f"resetting index: {index_name}")
     client = None
     try:
-        client = weaviate.connect_to_local(**connection_config)
+        if is_cloud_storage:
+            client = weaviate.connect_to_weaviate_cloud(**connection_config["cloud"])
+        else:
+            client = weaviate.connect_to_local(**connection_config["local"])
         client.collections.delete(index_name)
     except Exception as e:
         print("error in remove_index")
@@ -179,10 +198,14 @@ def remove_index(index_name: str):
             client.close()
 
 
-def remove_all_index():
+@time_performance(name="remove_all_index")
+def remove_all_index(is_cloud_storage: bool = False):
     client = None
     try:
-        client = weaviate.connect_to_local(**connection_config)
+        if is_cloud_storage:
+            client = weaviate.connect_to_weaviate_cloud(**connection_config["cloud"])
+        else:
+            client = weaviate.connect_to_local(**connection_config["local"])
         client.collections.delete_all()
     except Exception as e:
         print("error in remove_all_index")
@@ -192,12 +215,15 @@ def remove_all_index():
             client.close()
 
 
-def list_all_index():
+@time_performance("list_all_index")
+def list_all_index(is_cloud_storage: bool = False):
     client = None
     try:
-        client = weaviate.connect_to_local(**connection_config)
+        if is_cloud_storage:
+            client = weaviate.connect_to_weaviate_cloud(**connection_config["cloud"])
+        else:
+            client = weaviate.connect_to_local(**connection_config["local"])
         collections = client.collections.list_all(simple=True)
-        print("Current Index List")
         return list(collections.keys())
     except Exception as e:
         print("error in remove_all_index")
@@ -207,16 +233,18 @@ def list_all_index():
             client.close()
 
 
-def split_and_store(
-    documents: list[Document],
+@time_performance("preprocess_index")
+def preprocess_index(
+    directory: str,
     index_name: str,
     splitter_type: SplitterType,
-    add_context: bool = False,
+    has_embed_context: bool = False,
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
     chunk_overlap_rate: float = 0.2,
     max_token: int = 500,
-    context_augment_model_name: str = "",
+    context_augment_model_name: str = "gpt-5-mini",
+    is_cloud_storage: bool = False,
 ):
     """
     stores the document into vector database for search and retrieve query relevant documents
@@ -225,25 +253,22 @@ def split_and_store(
         1. split documents (w/ context augmented)
         2. store embeddings to the vector database - I/O bound
     """
+    
+    documents = retrieve_documents(directory=directory)
+    
+    documents = clean_documents(documents)
 
-    start = time.time()  # record start time
-
-    # # step 1 - split documents (w/ context augmented)
-    nodes = split_documents(
+    # data ingestion
+    nodes = ingest_documents(
         documents=documents,
         splitter_type=splitter_type,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         chunk_overlap_rate=chunk_overlap_rate,
         max_tokens=max_token,
-        add_context=add_context,
+        has_embed_context=has_embed_context,
         context_augment_model_name=context_augment_model_name,
     )
 
-    # # step 2 - store embeddings to the vector database
-    store_nodes(nodes=nodes, index_name=index_name)
-
-    end = time.time()  # record end time
-
-    elapsed = end - start
-    print(f"🕰️ Elapsed time: {elapsed:.2f} seconds for {index_name}")
+    # data indexing
+    index(nodes=nodes, index_name=index_name, is_cloud_storage=is_cloud_storage)

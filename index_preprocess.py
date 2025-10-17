@@ -1,30 +1,39 @@
-# from llama_index.core import Settings
+from rag.indexing.modules import (
+    list_all_index,
+    remove_all_index,
+    set_global_embeddings,
+    preprocess_index,
+)
 
-# Settings.llm = None  # type: ignore
-# from rag.indexing.modules import (
-#     list_all_index,
-#     remove_all_index,
-#     retrieve_documents,
-#     clean_documents,
-#     set_global_embeddings,
-#     split_and_store,
-# )
-# from dotenv import load_dotenv
+documents_path = "./documents"
+embeddings_name = "intfloat/multilingual-e5-base"
 
-# load_dotenv()
+# remove_all_index(is_cloud_storage=True)
+set_global_embeddings(model_name=embeddings_name, provider="hf")
+preprocess_index(
+    directory=documents_path,
+    index_name="JapanVisa",
+    splitter_type="custom",
+    has_embed_context=True,
+    is_cloud_storage=True
+)
+print(list_all_index(is_cloud_storage=True))
 
-# # remove_all_index()
 
-# documents_path = "./documents"
-# context_augment_model_name = "gemma3:1b"
-# hf_embeddings_name = "intfloat/multilingual-e5-base"
-# openai_embeddings_name = "text-embedding-3-small"
 
-# documents = retrieve_documents(documents_path)
-# documents = clean_documents(documents)
 
-# # test purposes
-# # documents = documents[9:10]  # comment out when not testing!!!!
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ########################## HuggingFace ##########################
@@ -121,4 +130,5 @@
 #     context_augment_model_name=context_augment_model_name,
 # )
 
-# print(list_all_index())
+# print(list_all_index(is_cloud_storage=False))
+
