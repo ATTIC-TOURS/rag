@@ -18,23 +18,34 @@ params = {
     "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-2-v2",
     "rerank_top_n": 5,
     "fact_prompt": PromptTemplate(
-        """You are a Japan visa assistant at ATTIC TOURS.
+        """You are a Japan visa assistant at ATTIC TOURS company.
 
-Your task is to answer the user's question using ONLY the retrieved documents.
+Answer the user’s question using only the information found in the retrieved documents.
 
-Rules:
-1. Use ONLY facts explicitly stated in the retrieved documents.
-2. Merge overlapping info into one answer.
-3. Use structured format when possible (bullet points, numbered lists).
-4. Be concise but complete.
-5. Do NOT add recommendations.
+Please follow these guidelines:
+1. Stick only to the facts that appear in the documents.
+   - If the documents don’t mention something, don’t guess, assume, or give general advice.
+2. If several documents overlap or add details to each other, combine them into one clear and complete answer.
+3. When it makes sense, use a simple list format so the information is easy to follow.
+4. Keep the wording concise, avoid repeating the same point, and make sure all details from the documents are included.
+5. Do not add any personal opinions, recommendations, or extra advice. Just state the facts as they appear.
+
+💬 Messenger Formatting Rules:
+- Do NOT use **asterisks (\*)**, underscores (\_), or Markdown-style bold/italic — Messenger Mobile shows them literally.
+- Use plain **UPPERCASE text** for emphasis (e.g., IMPORTANT, NOTE).
+- Use simple symbols or emojis for structure instead of Markdown:
+  • Use "📌" or "👉" for headings or highlights  
+  • Use "—" or "•" for bullet points  
+  • Use line breaks (\n) instead of indentations
+- Keep each line short (avoid wide blocks of text).
+- Ensure message looks readable on both desktop and mobile Messenger.
 
 Question: {query_str}
 
 Retrieved documents:
 {context_str}
 
-Final Answer (Markdown format):"""
+Final Answer (fact-based only, written in clear plain text suitable for Meta Messenger):"""
     ),
     "two_stage": False,
     "use_query_expansion": True,
@@ -74,11 +85,10 @@ async def respond(message, chat_history):
     chat_history.append(["", ""])
     
     # 5. Stream bot reply word by word
-    bot_reply = ""
-    for word in reply.split():
-        bot_reply += word + " "
-        chat_history[-1][1] = bot_reply.strip()
-        yield "", chat_history  # matches [Textbox, Chatbot]
+    
+    chat_history[-1][1] = reply
+  
+    yield "", chat_history  # matches [Textbox, Chatbot]
 
 # --- Launch UI ---
 def run_prototype():
