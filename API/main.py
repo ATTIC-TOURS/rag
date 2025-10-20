@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .api_routers import messenger, knowledge_base
+from src.api_routers import messenger
 
 
 app = FastAPI(
@@ -9,7 +9,6 @@ app = FastAPI(
 )
 
 app.include_router(messenger.router, prefix="/api/v1")
-app.include_router(knowledge_base.router, prefix="/api/v1")
 
 
 @app.get("/")

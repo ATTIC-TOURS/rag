@@ -1,14 +1,17 @@
-from ..text_cleaning_strategy.docs.v2 import DocsCleaningStrategyV2
-from ..embeddings.embeddings import MyEmbeddings
+import os
+from dotenv import load_dotenv
 
-from ..chunking_strategy.pdf_based_custom_splitter import PdfBasedCustomSplitter
+load_dotenv()
+import uuid
+from typing import Literal
+from colorama import init, Fore
 
-from ..context_augment.context_embedder import ContextEmbedderLLM
-from ..context_augment.context_augment import ContextAugmentNodeProcessor
+init(autoreset=True)
+import warnings
 
-from sentence_transformers import SentenceTransformer
+warnings.filterwarnings("ignore", category=ResourceWarning)
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 
 from llama_index.core import Document, VectorStoreIndex, Settings, StorageContext
@@ -19,30 +22,24 @@ from llama_index.core.schema import TextNode
 import weaviate
 from weaviate.classes.init import Auth
 
-import uuid
-import os
-from dotenv import load_dotenv
+from ..text_cleaning_strategy.docs.v2 import DocsCleaningStrategyV2
 
-load_dotenv()
-from typing import Literal
-from colorama import init, Fore
+from ..embeddings.embeddings import MyEmbeddings
 
-init(autoreset=True)
-import warnings
+from ..chunking_strategy.pdf_based_custom_splitter import PdfBasedCustomSplitter
 
-warnings.filterwarnings("ignore", category=ResourceWarning)
+from ..context_augment.context_embedder import ContextEmbedderLLM
+from ..context_augment.context_augment import ContextAugmentNodeProcessor
 
 from ..my_decorators.time import time_performance
 
-weaviate_url = os.environ["WEAVIATE_URL"]
-weaviate_api_key = os.environ["WEAVIATE_API_KEY"]
 
 # connection settings to weaviate (vector database)
 connection_config = {
     "local": {"port": 8080, "grpc_port": 50051, "skip_init_checks": True},
     "cloud": {
-        "cluster_url": weaviate_url,
-        "auth_credentials": Auth.api_key(weaviate_api_key),
+        "cluster_url": os.environ["WEAVIATE_URL"],
+        "auth_credentials": Auth.api_key(os.environ["WEAVIATE_API_KEY"]),
     },
 }
 
@@ -89,10 +86,13 @@ def clean_documents(documents):
 
 Provider = Literal["hf", "openai"]
 
+
 @time_performance("set_global_embeddings")
 def set_global_embeddings(model_name: str, provider: Provider):
+    model = None
     if provider == "hf":
-        model = SentenceTransformer(model_name)
+        # model = SentenceTransformer(model_name)
+        pass
     elif provider == "openai":
         model = OpenAIEmbeddings(model=model_name)
     else:
@@ -253,11 +253,11 @@ def preprocess_index(
         1. split documents (w/ context augmented)
         2. store embeddings to the vector database - I/O bound
     """
-    
-    documents = retrieve_documents(directory=directory)
-    
-    documents = clean_documents(documents)
 
+    documents = retrieve_documents(directory=directory)
+
+    documents = clean_documents(documents)
+    
     # data ingestion
     nodes = ingest_documents(
         documents=documents,
@@ -270,5 +270,5 @@ def preprocess_index(
         context_augment_model_name=context_augment_model_name,
     )
 
-    # data indexing
+    # # data indexing
     index(nodes=nodes, index_name=index_name, is_cloud_storage=is_cloud_storage)

@@ -1,22 +1,21 @@
 from rag.indexing.modules import (
     list_all_index,
-    remove_all_index,
     set_global_embeddings,
     preprocess_index,
 )
 
-documents_path = "./documents"
-embeddings_name = "intfloat/multilingual-e5-base"
+# documents_path = "./documents"
+# embeddings_name = "text-embedding-3-small"
+# provider = "openai"
 
-# remove_all_index(is_cloud_storage=True)
-set_global_embeddings(model_name=embeddings_name, provider="hf")
-preprocess_index(
-    directory=documents_path,
-    index_name="JapanVisa",
-    splitter_type="custom",
-    has_embed_context=True,
-    is_cloud_storage=True
-)
+# set_global_embeddings(model_name=embeddings_name, provider=provider)
+# preprocess_index(
+#     directory=documents_path,
+#     index_name="JapanVisaDemo",
+#     splitter_type="custom",
+#     has_embed_context=True,
+#     is_cloud_storage=True
+# )
 print(list_all_index(is_cloud_storage=True))
 
 

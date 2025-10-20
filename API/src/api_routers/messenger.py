@@ -1,20 +1,32 @@
-from contextlib import asynccontextmanager
-from fastapi import APIRouter, Request, Response, BackgroundTasks, Query
-from dotenv import load_dotenv
+# ------------------------- DEPENDENCIES ------------------------- #
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from contextlib import asynccontextmanager
+
+from fastapi import APIRouter, Request, Response, BackgroundTasks, Query
+
 import httpx
+
 from weaviate import WeaviateAsyncClient
+
 from llama_index.core.prompts import PromptTemplate
-from ..rag.rag_pipeline import build_rag_pipeline
-from ..rag.indexing.modules import set_global_embeddings
+
 import sqlite3
+
+import asyncio
 
 from colorama import init, Fore
 
 init(autoreset=True)
 
-# --- Load env ---
-load_dotenv()
+from ..rag.rag_pipeline import build_rag_pipeline
+
+# ------------------------- DEPENDENCIES (END) ------------------------- #
+
+# ------------------------- GLOBAL VARIABLES ------------------------- #
 PAGE_ACCESS_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
 VERIFY_TOKEN = os.getenv("VERIFICATION_TOKEN")
 FB_SEND_API_URL = "https://graph.facebook.com/v23.0/me/messages"
@@ -23,11 +35,12 @@ FB_SEND_API_URL = "https://graph.facebook.com/v23.0/me/messages"
 query_engine: any
 client: WeaviateAsyncClient
 
-# --- Params ---
 params = {
-    "index_name": "Custom_splitter_w_context_hf",
+    "index_name": "JapanVisaDemo",
     "alpha": 0.8,
     "base_k": 5,
+    "use_query_expansion": True,
+    "query_expansion_num": 1,
     "expansion_k": 5,
     "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
     "rerank_top_n": 5,
@@ -75,19 +88,16 @@ Final Answer (fact-based only, written clearly in the same language as the user 
 
 """
     ),
-    "two_stage": False,
-    "use_query_expansion": True,
-    "query_expansion_num": 2,
 }
+# ------------------------- GLOBAL VARIABLES (END) ------------------------- #
 
 
 # --- Lifespan ---
 @asynccontextmanager
 async def lifespan(app: APIRouter):
-    set_global_embeddings(model_name="intfloat/multilingual-e5-base", provider="hf")
     global query_engine, client
     print("🚀 Initializing RAG pipeline...")
-    query_engine, client = await build_rag_pipeline(**params)
+    query_engine, client = await build_rag_pipeline(**params, is_cloud_storage=True)
     yield
     print("🛑 Shutting down RAG pipeline...")
     await client.close()
@@ -192,13 +202,13 @@ async def send_message(recipient_id: str, text: str):
             message_id = r.json().get("message_id")
         except Exception:
             message_id = None
-        
+
         return message_id
+
 
 async def send_long_message(recipient_id: str, text: str):
     for part in split_text(text):
         await send_message(recipient_id, part)
-
 
 
 # --- Webhook verify ---
@@ -218,35 +228,43 @@ async def process_user_message(recipient_id: str, text: str):
     print(f"[REAL] User {recipient_id} said: {text}")
     try:
         # Show mark seen
-        await send_mark_seen_indicator(recipient_id)
+        # await send_mark_seen_indicator(recipient_id)
 
-        await send_message(recipient_id, "💬")
+        # await send_message(recipient_id, "💬")
 
-        await send_typing_indicator(recipient_id)
+        # await send_typing_indicator(recipient_id)
+
+        await asyncio.gather(
+            send_mark_seen_indicator(recipient_id),
+            send_typing_indicator(recipient_id),
+        )
 
         # Ask RAG
         reply_text = await inquire(text)
-        
+
         await send_typing_off(recipient_id)
 
         # Send reply in chunks if needed
         await send_long_message(recipient_id, reply_text)
-        
+
     except Exception as e:
         print(f"❌ Error in process_user_message: {e}")
         await send_typing_off(recipient_id)
-        
+
 
 def init_db():
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
-    c.execute("""
+    c.execute(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY
         )
-    """)
+    """
+    )
     conn.commit()
     conn.close()
+
 
 def user_exists(user_id: str) -> bool:
     conn = sqlite3.connect("users.db")
@@ -256,6 +274,7 @@ def user_exists(user_id: str) -> bool:
     conn.close()
     return exists
 
+
 def save_user(user_id: str):
     conn = sqlite3.connect("users.db")
     c = conn.cursor()
@@ -263,13 +282,15 @@ def save_user(user_id: str):
     conn.commit()
     conn.close()
 
+
 greeting_text = (
-                        "👋 Hi there! Welcome to Attic Tours — your trusted assistant for Japan Visa inquiries.\n\n"
-                        "I’m an automated chatbot ready to help you with visa requirements, processing fees, application locations, contact numbers, and more. 🇯🇵\n\n"
-                        "💬 You can ask me anything — no need to follow strict sentences!\n"
-                        "Feel free to message in English, Filipino, or even Taglish.\n\n"
-                        "How can I assist you today?"
-                    )
+    "👋 Hi there! Welcome to Attic Tours — your trusted assistant for Japan Visa inquiries.\n\n"
+    "I’m an automated chatbot ready to help you with visa requirements, processing fees, application locations, contact numbers, and more. 🇯🇵\n\n"
+    "💬 You can ask me anything — no need to follow strict sentences!\n"
+    "Feel free to message in English, Filipino, or even Taglish.\n\n"
+    "How can I assist you today?"
+)
+
 
 @router.post("/messenger-webhook")
 async def handle_messenger_webhook(request: Request, background_tasks: BackgroundTasks):
@@ -282,8 +303,7 @@ async def handle_messenger_webhook(request: Request, background_tasks: Backgroun
             for messaging in entry.get("messaging", []):
 
                 sender_id = messaging["sender"]["id"]
-               
-              
+
                 if "message" in messaging:
                     # Skip bot echo messages to avoid loops
                     if messaging["message"].get("is_echo"):
@@ -294,11 +314,11 @@ async def handle_messenger_webhook(request: Request, background_tasks: Backgroun
                         if not user_exists(sender_id):
                             # Save and greet the new user
                             save_user(sender_id)
-                            await send_message(
-                                sender_id,
-                                greeting_text)
+                            await send_message(sender_id, greeting_text)
                         else:
-                            background_tasks.add_task(process_user_message, sender_id, text)
+                            background_tasks.add_task(
+                                process_user_message, sender_id, text
+                            )
 
     return {"status": "ok"}
 

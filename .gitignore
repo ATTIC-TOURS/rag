@@ -13,3 +13,4 @@ token.json
 japan_visa_related_classifier.pkl
 .mypy_cache
 .gradio
+env.yaml
